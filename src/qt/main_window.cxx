@@ -1,5 +1,7 @@
 #include "main_window.hxx"
 
+#include <QtGui/QAction>
+#include <QtGui/QKeySequence>
 #include <QtGui/QMainWindow>
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
@@ -20,6 +22,10 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
   QMenuBar* const menu_bar = new QMenuBar(this);
   {
     QMenu* const file = new QMenu("File", menu_bar);
+    QAction* const save = new QAction("Save", menu_bar);
+    save->setShortcut(QKeySequence(QKeySequence::Save));
+    connect(save, SIGNAL(triggered()), SLOT(saveScriptArchive()));
+    file->addAction(save);
     QMenu* const edit = new QMenu("Edit", menu_bar);
 
     menu_bar->addMenu(file);
