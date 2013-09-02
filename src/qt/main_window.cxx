@@ -52,8 +52,8 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
 }
 
 void RGSS_MainWindow::setCurrentIndex(int idx) {
-  assert(size_t(idx) < scripts_.size());
-  assert(size_t(current_row_) < scripts_.size());
+  Q_ASSERT(size_t(idx) < scripts_.size());
+  Q_ASSERT(size_t(current_row_) < scripts_.size());
 
   std::string const script = script_editor_.text().toStdString();
   if(not parseScript(script)) {

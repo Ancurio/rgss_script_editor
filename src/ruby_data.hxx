@@ -2,17 +2,19 @@
 #define RGSS_RUBY_DATA_HXX
 
 #include <string>
-#include <boost/container/vector.hpp>
+#include <QVector>
 
 struct Script {
   unsigned magic;
   std::string name;
   std::string data;
 
+  Script() {}
+
   Script(unsigned const m, std::string const& n, std::string const& d);
 };
 
-typedef boost::container::vector<Script> ScriptList;
+typedef QVector<Script> ScriptList;
 
 bool loadScripts(std::string const& file, ScriptList& data);
 bool dumpScripts(std::string const& file, ScriptList const& data);
