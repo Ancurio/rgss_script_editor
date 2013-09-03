@@ -45,8 +45,21 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
   sizes.push_back(window_size.width() / 4 * 3);
   splitter_.setSizes(sizes);
 
+  QFont font;
+  font.setStyleHint(QFont::Monospace);
+  font.setFamily(font.defaultFamily());
+  script_editor_.setFont(font);
+  script_editor_.setMarginsFont(font);
+
   script_editor_.setUtf8(true);
-  script_editor_.setLexer(new QsciLexerRuby(&script_editor_));
+  script_editor_.setIndentationWidth(2);
+  QsciLexer* lexer = new QsciLexerRuby(&script_editor_);
+  lexer->setDefaultFont(font);
+  script_editor_.setLexer(lexer);
+
+  QFontMetrics fontmetrics(font);
+  script_editor_.setMarginWidth(0, fontmetrics.width("00000") + 6);
+  script_editor_.setMarginLineNumbers(0, true);
 
   connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(setCurrentIndex(int)));
 }
