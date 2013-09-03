@@ -54,15 +54,11 @@ bool loadScripts(std::string const& file, ScriptList& data) {
 bool dumpScripts(std::string const& file, ScriptList const& data) {
   Q_ASSERT(!data.empty());
   VALUE const ruby_data = rb_ary_new2(data.size());
-  rb_ary_store(ruby_data, data.size() - 1, Qnil);
-  Q_ASSERT(RARRAY_LEN(ruby_data) == int(data.size()));
   for(QVector<Script>::ConstIterator i = data.begin(); i < data.end(); ++i) {
     VALUE const script = rb_ary_new2(3);
-    rb_ary_store(script, 3 - 1, Qnil);
-    Q_ASSERT(RARRAY_LEN(script) == 3);
 
-    RARRAY_PTR(script)[0] = INT2NUM(i->magic);
-    RARRAY_PTR(script)[1] = rb_str_new(i->name.data(), i->name.size());
+    rb_ary_push(script, INT2NUM(i->magic));
+    rb_ary_push(script, rb_str_new(i->name.data(), i->name.size()));
 
     // compress with zlib
     QVector<Bytef> buf(i->data.size() * 2);
@@ -72,12 +68,13 @@ bool dumpScripts(std::string const& file, ScriptList const& data) {
         reinterpret_cast<Bytef const*>(i->data.data()),
         i->data.size());
     Q_ASSERT(result == Z_OK);
-    std::string const script_data(buf.begin(), buf.end());
-    RARRAY_PTR(script)[2] = rb_str_new(script_data.data(), script_data.size());
+    rb_ary_push(script, rb_str_new(reinterpret_cast<char const*>(buf.data()), buf_len));
 
-    RARRAY_PTR(ruby_data)[i - data.begin()] = script;
+    Q_ASSERT(RARRAY_LEN(script) == 3);
+    rb_ary_push(ruby_data, script);
   }
 
+  Q_ASSERT(RARRAY_LEN(ruby_data) == int(data.size()));
   rb_marshal_dump(ruby_data, rb_file_open(file.c_str(), "wb"));
 
   return true;
