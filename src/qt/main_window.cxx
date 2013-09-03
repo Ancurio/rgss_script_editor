@@ -52,7 +52,10 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
 
   // other setting
   script_editor_.setUtf8(true);
+
+  // indent
   script_editor_.setIndentationWidth(2);
+  script_editor_.setAutoIndent(true);
 
   // lexer and font
   QFont font;
