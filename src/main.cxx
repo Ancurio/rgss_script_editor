@@ -18,7 +18,8 @@ int main(int argc, char* argv[]) {
   }
   main.show();
 
-  app.setActiveWindow(&main);
+  main.activateWindow();
+  main.raise();
 
   return app.exec();
 }
