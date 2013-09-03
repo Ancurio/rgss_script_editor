@@ -52,6 +52,7 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
 
   // other setting
   script_editor_.setUtf8(true);
+  script_editor_.setEolMode(QsciScintilla::EolWindows);
 
   // indent
   script_editor_.setIndentationWidth(2);
