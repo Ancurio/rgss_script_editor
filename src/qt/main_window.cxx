@@ -6,6 +6,7 @@
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
 #include <QtGui/QVBoxLayout>
+#include <QtGui/QFileDialog>
 #include <QtCore/QFileInfo>
 
 #include <Qsci/qscilexerruby.h>
@@ -22,11 +23,28 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
 
   QMenuBar* const menu_bar = new QMenuBar(this);
   {
-    QMenu* const file = new QMenu("File", menu_bar);
-    QAction* const save = new QAction("Save", menu_bar);
+    QMenu* const file = new QMenu(tr("File"), menu_bar);
+
+    QAction* const open = new QAction(tr("Open"), menu_bar);
+    open->setShortcut(QKeySequence(QKeySequence::Open));
+    connect(open, SIGNAL(triggered()), SLOT(openScriptArchive()));
+    file->addAction(open);
+
+    QAction* const save = new QAction(tr("Save"), menu_bar);
     save->setShortcut(QKeySequence(QKeySequence::Save));
     connect(save, SIGNAL(triggered()), SLOT(saveScriptArchive()));
     file->addAction(save);
+
+    QAction* const save_as = new QAction(tr("Save As"), menu_bar);
+    save_as->setShortcut(QKeySequence(QKeySequence::SaveAs));
+    connect(save_as, SIGNAL(triggered()), SLOT(saveScriptArchiveAs()));
+    file->addAction(save_as);
+
+    QAction* const close = new QAction(tr("Close"), menu_bar);
+    close->setShortcut(QKeySequence(QKeySequence::Close));
+    connect(close, SIGNAL(triggered()), SLOT(closeScriptArchive()));
+    file->addAction(close);
+
     QMenu* const edit = new QMenu("Edit", menu_bar);
 
     menu_bar->addMenu(file);
@@ -79,9 +97,50 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
 
   connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(setCurrentIndex(int)));
   connect(&script_name_editor_, SIGNAL(textEdited(QString)), SLOT(scriptNameEdited(QString)));
+
+  enableEditing(false);
+}
+
+void RGSS_MainWindow::enableEditing(bool v) {
+  script_editor_.setEnabled(v);
+  script_name_editor_.setEnabled(v);
+  script_list_.setEnabled(v);
+}
+
+bool RGSS_MainWindow::scriptArchiveOpened() const {
+  return not file_.isEmpty();
+}
+
+void RGSS_MainWindow::openScriptArchive() {
+  QString const f = QFileDialog::getOpenFileName(
+      this, tr("Select script archive to open..."), QDir::homePath(),
+      tr("Script Archive (Scripts.rxdata);; Other rxdata (*.rxdata)"));
+  if(f.isNull()) { return; } // check cancel
+  setScriptArchive(f);
+}
+
+void RGSS_MainWindow::saveScriptArchiveAs() {
+  QString const f = QFileDialog::getSaveFileName(
+      this, tr("Select saving file..."), QFileInfo(file_).dir().path());
+  if(f.isNull()) { return; } // check cancel
+  saveScriptArchiveAs(f);
+}
+
+void RGSS_MainWindow::closeScriptArchive() {
+  file_ = QString();
+  scripts_.clear();
+  current_row_ = 0;
+
+  script_editor_.setText(QString());
+  script_name_editor_.setText(QString());
+  script_list_.clear();
+
+  enableEditing(false);
 }
 
 void RGSS_MainWindow::setCurrentIndex(int idx) {
+  if(not scriptArchiveOpened()) { return; }
+
   Q_ASSERT(QVector<Script>::size_type(idx) < scripts_.size());
   Q_ASSERT(QVector<Script>::size_type(current_row_) < scripts_.size());
 
@@ -127,6 +186,8 @@ void RGSS_MainWindow::setScriptArchive(QString const& file) {
   int const next_row = std::max(std::min<int>(current_row, scripts_.size() - 1), 0);
   current_row_ = next_row;
   script_list_.setCurrentRow(next_row);
+
+  enableEditing(true);
 }
 
 void RGSS_MainWindow::saveScriptArchive() {

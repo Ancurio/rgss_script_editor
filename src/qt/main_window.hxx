@@ -26,7 +26,15 @@ class RGSS_MainWindow : public QMainWindow {
 
   void scriptNameEdited(QString const& name);
 
+  void openScriptArchive();
+  void saveScriptArchiveAs();
+  void closeScriptArchive();
+
+  bool scriptArchiveOpened() const;
+
  private:
+  void enableEditing(bool v);
+
   QString file_;
   ScriptList scripts_;
   int current_row_;
