@@ -4,14 +4,12 @@
 #include <QtGui/QMainWindow>
 #include <QtGui/QSplitter>
 #include <QtGui/QListWidget>
+#include <QtGui/QWidget>
+#include <QtGui/QLineEdit>
 
 #include <Qsci/qsciscintilla.h>
 
 #include "ruby_data.hxx"
-
-class QSplitter;
-class QListWidget;
-class QsciScintilla;
 
 class RGSS_MainWindow : public QMainWindow {
   Q_OBJECT
@@ -26,13 +24,17 @@ class RGSS_MainWindow : public QMainWindow {
 
   void setCurrentIndex(int idx);
 
+  void scriptNameEdited(QString const& name);
+
  private:
   QString file_;
   ScriptList scripts_;
   int current_row_;
 
   QSplitter splitter_;
+  QWidget left_side_;
   QListWidget script_list_;
+  QLineEdit script_name_editor_;
   QsciScintilla script_editor_;
 };
 

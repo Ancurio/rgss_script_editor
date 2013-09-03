@@ -5,6 +5,7 @@
 #include <QtGui/QMainWindow>
 #include <QtGui/QMenuBar>
 #include <QtGui/QMessageBox>
+#include <QtGui/QVBoxLayout>
 #include <QtCore/QFileInfo>
 
 #include <Qsci/qscilexerruby.h>
@@ -36,7 +37,11 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
   splitter_.setOrientation(Qt::Horizontal);
   setCentralWidget(&splitter_);
 
-  splitter_.addWidget(&script_list_);
+  left_side_.setLayout(new QVBoxLayout(&left_side_));
+  left_side_.layout()->addWidget(&script_list_);
+  left_side_.layout()->addWidget(&script_name_editor_);
+
+  splitter_.addWidget(&left_side_);
   splitter_.addWidget(&script_editor_);
 
   QList<int> sizes;
@@ -69,6 +74,7 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
   script_editor_.setAutoCompletionSource(QsciScintilla::AcsAll);
 
   connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(setCurrentIndex(int)));
+  connect(&script_name_editor_, SIGNAL(textEdited(QString)), SLOT(scriptNameEdited(QString)));
 }
 
 void RGSS_MainWindow::setCurrentIndex(int idx) {
@@ -80,6 +86,7 @@ void RGSS_MainWindow::setCurrentIndex(int idx) {
     QString const syntax_err = "Syntax error in "
         + QString::fromStdString(scripts_[current_row_].name);
     QMessageBox::warning(this, "Syntax error", syntax_err);
+    return;
   }
 
   if(script_editor_.isModified()) {
@@ -87,8 +94,15 @@ void RGSS_MainWindow::setCurrentIndex(int idx) {
     script_editor_.setModified(false);
   }
   script_editor_.setText(QString::fromStdString(scripts_[idx].data));
+  script_name_editor_.setText(QString::fromStdString(scripts_[idx].name));
 
   std::swap(idx, current_row_);
+}
+
+void RGSS_MainWindow::scriptNameEdited(QString const& name) {
+  Q_ASSERT(current_row_ == script_list_.currentRow());
+  script_list_.currentItem()->setText(name);
+  scripts_[current_row_].name = name.toStdString();
 }
 
 void RGSS_MainWindow::setScriptArchive(QString const& file) {
