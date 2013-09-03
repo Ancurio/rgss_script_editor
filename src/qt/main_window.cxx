@@ -92,6 +92,11 @@ void RGSS_MainWindow::setScriptArchive(QString const& file) {
 }
 
 void RGSS_MainWindow::saveScriptArchive() {
+  if(script_editor_.isModified()) {
+    scripts_[current_row_].data = script_editor_.text().toStdString();
+    script_editor_.setModified(false);
+  }
+
   saveScriptArchiveAs(file_);
 }
 
