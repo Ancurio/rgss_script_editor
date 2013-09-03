@@ -64,6 +64,10 @@ RGSS_MainWindow::RGSS_MainWindow(QWidget* const parent, Qt::WindowFlags const fl
   script_editor_.setMarginWidth(0, fontmetrics.width("00000") + 6);
   script_editor_.setMarginLineNumbers(0, true);
 
+  // auto complete
+  script_editor_.setAutoCompletionThreshold(3);
+  script_editor_.setAutoCompletionSource(QsciScintilla::AcsAll);
+
   connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(setCurrentIndex(int)));
 }
 
