@@ -135,16 +135,21 @@ void RGSS_MainWindow::saveScriptArchiveAs() {
 void RGSS_MainWindow::closeScriptArchive() {
   file_ = QString();
   archive_.scripts.clear();
-  current_row_ = 0;
+  setCurrentIndex(-1);
 
-  script_editor_.setText(QString());
-  script_name_editor_.setText(QString());
   script_list_.clear();
 
   enableEditing(false);
 }
 
 void RGSS_MainWindow::setCurrentIndex(int idx) {
+  if (idx == -1) {
+    script_editor_.clear();
+    script_name_editor_.clear();
+    current_row_ = -1;
+    return;
+  }
+
   if(not scriptArchiveOpened()) { return; }
 
   Q_ASSERT(ScriptList::size_type(idx) < archive_.scripts.size());
@@ -157,7 +162,7 @@ void RGSS_MainWindow::setCurrentIndex(int idx) {
     return;
   }
 
-  if(script_editor_.isModified()) {
+  if(script_editor_.isModified() && current_row_ != -1) {
     archive_.scripts[current_row_].data = script_editor_.text();
     script_editor_.setModified(false);
   }
@@ -192,15 +197,15 @@ void RGSS_MainWindow::setScriptArchive(QString const& file) {
 
   file_ = QFileInfo(file).absoluteFilePath();
 
+  int const next_row = std::max(std::min<int>(current_row_, archive_.scripts.size() - 1), 0);
+
   script_list_.clear();
   for(ScriptList::const_iterator i = archive_.scripts.begin(); i < archive_.scripts.end(); ++i) {
     script_list_.addItem(i->name);
   }
 
-  int const current_row = script_list_.currentRow();
-  int const next_row = std::max(std::min<int>(current_row, archive_.scripts.size() - 1), 0);
-  current_row_ = next_row;
   script_list_.setCurrentRow(next_row);
+  script_editor_.setModified(false);
 
   enableEditing(true);
 }
