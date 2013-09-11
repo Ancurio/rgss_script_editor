@@ -6,84 +6,390 @@ extern "C" {
 #include "ruby_data.hxx"
 #include <QtCore/QFileInfo>
 
-Script::Script(unsigned const m, std::string const& n, std::string const& d)
-    : magic(m), name(n)
-{
-  // extract with zlib
-  QVector<Bytef> buf(d.size() * 5);
-  int result = Z_OK;
-  uLongf  dst_len = buf.size();
-  while((result = ::uncompress(
-            buf.data(), &dst_len,
-            reinterpret_cast<Bytef const*>(d.data()),
-            d.size())) == Z_BUF_ERROR)
-  {
-    buf.resize(buf.size() + d.size());
-    dst_len = buf.size();
-  }
-  Q_ASSERT(result == Z_OK);
-  this->data.assign(buf.begin(), buf.end());
-}
+#include <QByteArray>
 
-bool loadScripts(std::string const& file, ScriptList& data) {
-  if(not QFileInfo(QString::fromUtf8(file.c_str())).exists()) { return false; }
-
-  VALUE const stream = rb_file_open(file.c_str(), "rb");
-  VALUE const scripts = rb_marshal_load(stream);
-
-  if(rb_type(scripts) != T_ARRAY) { return false; }
-
-  data.clear();
-
-  for(int i = 0; i < RARRAY_LEN(scripts); ++i) {
-    VALUE const script = RARRAY_PTR(scripts)[i];
-    Q_ASSERT(RARRAY_LEN(script) == 3);
-    VALUE const* const ary = RARRAY_PTR(script);
-    Q_ASSERT(rb_type(ary[0]) == T_FIXNUM);
-    Q_ASSERT(rb_type(ary[1]) == T_STRING);
-    Q_ASSERT(rb_type(ary[2]) == T_STRING);
-    data.push_back(Script(
-        NUM2INT(ary[0]),
-        std::string(RSTRING_PTR(ary[1]), RSTRING_LEN(ary[1])),
-        std::string(RSTRING_PTR(ary[2]), RSTRING_LEN(ary[2]))));
-  }
-
-  return true;
-}
-
-bool dumpScripts(std::string const& file, ScriptList const& data) {
-  Q_ASSERT(!data.empty());
-  VALUE const ruby_data = rb_ary_new2(data.size());
-  for(QVector<Script>::ConstIterator i = data.begin(); i < data.end(); ++i) {
-    VALUE const script = rb_ary_new2(3);
-
-    rb_ary_push(script, INT2NUM(i->magic));
-    rb_ary_push(script, rb_str_new(i->name.data(), i->name.size()));
-
-    // compress with zlib
-    QVector<Bytef> buf(i->data.size() * 2);
-    uLongf buf_len = buf.size();
-    int result = compress(
-        buf.data(), &buf_len,
-        reinterpret_cast<Bytef const*>(i->data.data()),
-        i->data.size());
-    Q_ASSERT(result == Z_OK);
-    rb_ary_push(script, rb_str_new(reinterpret_cast<char const*>(buf.data()), buf_len));
-
-    Q_ASSERT(RARRAY_LEN(script) == 3);
-    rb_ary_push(ruby_data, script);
-  }
-
-  Q_ASSERT(RARRAY_LEN(ruby_data) == int(data.size()));
-  rb_marshal_dump(ruby_data, rb_file_open(file.c_str(), "wb"));
-
-  return true;
-}
 
 bool parseScript(std::string const&) {
   // TODO
   return true;
 }
+
+static QByteArray compressData(const QByteArray &data)
+{
+  uLongf destLen = data.size() + 8;
+  QByteArray buffer;
+
+  int status;
+
+  do {
+    destLen *= 2;
+    buffer.resize(destLen);
+
+    status = compress(reinterpret_cast<Bytef*>(buffer.data()), &destLen,
+                      reinterpret_cast<const Bytef*>(data.constData()), data.length());
+
+    if (status != Z_OK && status != Z_BUF_ERROR)
+      throw QByteArray("zlib decompression error");
+  }
+  while (status == Z_BUF_ERROR);
+
+  buffer.resize(destLen);
+
+  return buffer;
+}
+
+static QByteArray decompressData(const QByteArray &data)
+{
+  uLongf destLen = data.size() + 8;
+  QByteArray buffer;
+
+  int status;
+
+  do {
+    destLen *= 2;
+    buffer.resize(destLen);
+
+    status = uncompress(reinterpret_cast<Bytef*>(buffer.data()), &destLen,
+                        reinterpret_cast<const Bytef*>(data.constData()), data.size());
+
+    if (status != Z_OK && status != Z_BUF_ERROR)
+      throw QByteArray("zlib decompression error");
+  }
+  while (status == Z_BUF_ERROR);
+
+  buffer.resize(destLen);
+
+  return buffer;
+}
+
+/* Reads one byte from the device */
+static char readByte(QIODevice &dev)
+{
+  char byte;
+  int count = dev.read(&byte, 1);
+
+  if (count < 1)
+    throw QByteArray("Unable to read data");
+
+  return byte;
+}
+
+static void verifyByte(QIODevice &dev, char expected,
+                       const char *error = "Bad data")
+{
+  char byte = readByte(dev);
+
+  if (byte != expected)
+    throw QByteArray(error);
+}
+
+static int readFixnum(QIODevice &dev)
+{
+  char head = readByte(dev);
+
+  if (head == 0)
+          return 0;
+  else if (head > 5)
+          return head - 5;
+  else if (head < -4)
+          return head + 5;
+
+  int pos = (head > 0);
+  int len = pos ? head : head * -1;
+
+  char n1, n2, n3, n4;
+
+  if (pos)
+          n2 = n3 = n4 = 0;
+  else
+          n2 = n3 = n4 = 0xFF;
+
+  n1 = readByte(dev);
+
+  if (len >= 2)
+          n2 = readByte(dev);
+  if (len >= 3)
+          n3 = readByte(dev);
+  if (len >= 4)
+          n4 = readByte(dev);
+
+  int result = ((0xFF << 0x00) & (n1 << 0x00))
+             | ((0xFF << 0x08) & (n2 << 0x08))
+             | ((0xFF << 0x10) & (n3 << 0x10))
+             | ((0xFF << 0x18) & (n4 << 0x18));
+
+  return result;
+}
+
+static QByteArray readString(QIODevice &dev)
+{
+  int len = readFixnum(dev);
+  QByteArray data = dev.read(len);
+
+  if (data.size() != len)
+    throw QByteArray("Error reading data");
+
+  return data;
+}
+
+static QByteArray readIVARString(QIODevice &dev)
+{
+  QByteArray data;
+
+  /* Read inner raw string */
+  verifyByte(dev, '"');
+  data = readString(dev);
+
+  /* Read encoding */
+  int ivarCount = readFixnum(dev);
+
+  // XXX Can this be zero?
+  if (ivarCount > 1)
+    throw QByteArray("Cannot handle multiple string IVARS");
+
+  /* Read encoding symbol */
+  // XXX We can't deal with anythind outside Utf8/ASCII
+  char symByte = readByte(dev);
+
+  if (symByte == ':') {
+    /* This symbol must be :E */
+    QByteArray encSym = readString(dev);
+
+    if (encSym.size() != 1 || encSym[0] != 'E')
+      throw QByteArray("Bad data");
+  }
+  else if (symByte == ';') {
+    /* The :E symbol is always the first symlink */
+    verifyByte(dev, 0);
+  }
+  else {
+    throw QByteArray("Bad data");
+  }
+
+  char encByte = readByte(dev);
+
+  if (encByte != 'T' && encByte != 'F')
+    throw QByteArray("Bad data");
+
+  return data;
+}
+
+/* Abstractly reads a string, either raw or IVAR+Encoding based */
+static QByteArray readRubyString(QIODevice &dev)
+{
+  QByteArray data;
+  char type = readByte(dev);
+
+  if (type == '"') {
+    data = readString(dev);
+  }
+  else if (type == 'I') {
+    data = readIVARString(dev);
+  }
+  else {
+    throw QByteArray("Bad data");
+  }
+
+  return data;
+}
+
+static QString UTF8ToQString(const QByteArray &data)
+{
+  return QString::fromUtf8(data.constData(), data.size());
+}
+
+static ScriptArchive::Script readScript(QIODevice &dev)
+{
+  ScriptArchive::Script script;
+
+  /* Verify array prologue */
+  verifyByte(dev, '[');
+  char len = readFixnum(dev);
+  if (len != 3)
+    throw QByteArray("Bad data");
+
+  /* Read magic */
+  verifyByte(dev, 'i');
+  script.magic = readFixnum(dev);
+
+  /* Read name */
+  script.name = UTF8ToQString(readRubyString(dev));
+
+  /* Read script data */
+  QByteArray data = readRubyString(dev);
+  data = decompressData(data);
+  script.data = UTF8ToQString(data);
+
+  return script;
+}
+
+/* Reads and verifies the Marshal header */
+static void verifyHeader(QIODevice &dev)
+{
+  const char *error = "Bad marshal header";
+
+  verifyByte(dev, 4, error);
+  verifyByte(dev, 8, error);
+}
+
+void ScriptArchive::read(QIODevice &dev)
+{
+  verifyHeader(dev);
+
+  /* Read array prologue */
+  verifyByte(dev, '[');
+  int scriptCount = readFixnum(dev);
+
+  /* Read scripts */
+  ScriptList old = scripts;
+  scripts.clear();
+  scripts.resize(scriptCount);
+
+  try {
+    for (int i = 0; i < scriptCount; ++i) {
+      scripts[i] = readScript(dev);
+    }
+  }
+  catch (const QByteArray &error) {
+    /* Restore previous state on error */
+    scripts = old;
+    throw error;
+  }
+}
+
+static void writeByte(QIODevice &dev, char byte)
+{
+  int count = dev.write(&byte, 1);
+
+  if (count < 1)
+    throw QByteArray("Error writing data");
+}
+
+static void writeFixnum(QIODevice &dev, int value)
+{
+  if (value == 0) {
+    writeByte(dev, 0);
+    return;
+  }
+  else if (value > 0 && value < 123) {
+    writeByte(dev, (char) value + 5);
+    return;
+  }
+  else if (value < 0 && value > -124) {
+    writeByte(dev, (char) value - 5);
+    return;
+  }
+
+  char len;
+
+  if (value > 0) {
+    /* Positive number */
+    if (value <= 0x7F)
+      len = 1;
+    else if (value <= 0x7FFF)
+      len = 2;
+    else if (value <= 0x7FFFFF)
+      len = 3;
+    else
+      len = 4;
+  }
+  else {
+    /* Negative number */
+    if (value >= (int) 0x80)
+      len = -1;
+    else if (value >= (int) 0x8000)
+      len = -2;
+    else if (value <= (int) 0x800000)
+      len = -3;
+    else
+      len = -4;
+  }
+
+  /* Write length */
+  writeByte(dev, len);
+
+  /* Write bytes */
+  if (len >= 1 || len <= -1)
+    writeByte(dev, (value & 0x000000FF) >> 0x00);
+  if (len >= 2 || len <= -2)
+    writeByte(dev, (value & 0x0000FF00) >> 0x08);
+  if (len >= 3 || len <= -3)
+    writeByte(dev, (value & 0x00FF0000) >> 0x10);
+  if (len == 4 || len == -4)
+    writeByte(dev, (value & 0xFF000000) >> 0x18);
+}
+
+static void writeString(QIODevice &dev, const QByteArray &data)
+{
+  writeFixnum(dev, data.size());
+  if (dev.write(data) < data.size())
+    throw QByteArray("Error writing data");
+}
+
+static void writeIVARString(QIODevice &dev, const QByteArray &data)
+{
+  /* Write inner string */
+  writeByte(dev, '"');
+  writeString(dev, data);
+
+  /* Write IVAR count */
+  writeFixnum(dev, 1);
+  // XXX It's no big deal, but maybe we should symlink all
+  // further references to ':E' as Ruby would do?
+  writeByte(dev, ':');
+  writeString(dev, "E");
+  /* Always write Utf8 encoding */
+  writeByte(dev, 'T');
+}
+
+static void writeRubyString(QIODevice &dev, const QByteArray &data,
+                            ScriptArchive::Format format)
+{
+  if (format == ScriptArchive::XP) {
+    writeByte(dev, '"');
+    writeString(dev, data);
+  }
+  else { /* format == ScriptArchive::VXAce */
+    writeByte(dev, 'I');
+    writeIVARString(dev, data);
+  }
+}
+
+static void writeScript(QIODevice &dev, const ScriptArchive::Script &script,
+                        ScriptArchive::Format format)
+{
+  /* Write array prologue */
+  writeByte(dev, '[');
+  writeFixnum(dev, 3);
+
+  /* Write magic */
+  writeByte(dev, 'i');
+  writeFixnum(dev, script.magic);
+
+  /* Write name */
+  writeRubyString(dev, script.name.toUtf8(), format);
+
+  /* Write script data */
+  QByteArray data = script.data.toUtf8();
+  data = compressData(data);
+  writeRubyString(dev, data, format);
+}
+
+void ScriptArchive::write(QIODevice &dev, Format format)
+{
+  /* Write header */
+  writeByte(dev, 4);
+  writeByte(dev, 8);
+
+  /* Write array prologue */
+  writeByte(dev, '[');
+  writeFixnum(dev, scripts.count());
+
+  /* Write scripts */
+  for (int i = 0; i < scripts.count(); ++i)
+    writeScript(dev, scripts[i], format);
+}
+
 
 RubyInstance::RubyInstance() {
 #ifdef RUBY_INIT_STACK

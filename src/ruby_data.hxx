@@ -2,24 +2,36 @@
 #define RGSS_RUBY_DATA_HXX
 
 #include <string>
+
 #include <QVector>
-
-struct Script {
-  unsigned magic;
-  std::string name;
-  std::string data;
-
-  Script() {}
-
-  Script(unsigned const m, std::string const& n, std::string const& d);
-};
-
-typedef QVector<Script> ScriptList;
-
-bool loadScripts(std::string const& file, ScriptList& data);
-bool dumpScripts(std::string const& file, ScriptList const& data);
+#include <QString>
+#include <QIODevice>
 
 bool parseScript(std::string const& src);
+
+struct ScriptArchive
+{
+  enum Format
+  {
+    XP,   /* Ruby 1.8 */
+    VXAce /* Ruby 1.9 */
+  };
+
+  struct Script {
+    int magic;
+    QString name;
+    QString data;
+  };
+
+  /* These both throw QByteStrings containing
+   * possible error messages */
+  void read(QIODevice &dev);
+  void write(QIODevice &dev, Format format);
+
+  QVector<Script> scripts;
+};
+
+typedef QVector<ScriptArchive::Script> ScriptList;
 
 struct RubyInstance {
   RubyInstance();
