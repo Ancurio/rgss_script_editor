@@ -113,9 +113,7 @@ bool RGSS_MainWindow::scriptArchiveOpened() const {
 
 static const char *fileFilter =
     QT_TRANSLATE_NOOP("RGSS_MainWindow",
-    "RMXP Archive (Scripts.rxdata);;"
-    "RMVX Archive (Scripts.rvdata);;"
-    "RMVX Ace Archive (Scripts.rvdata2);;"
+    "Script Archive (Scripts.rxdata Scripts.rvdata Scripts.rvdata2);;"
     "All files (*)");
 
 void RGSS_MainWindow::openScriptArchive() {
