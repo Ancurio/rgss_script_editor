@@ -36,7 +36,7 @@ class RGSS_MainWindow : public QMainWindow {
   void enableEditing(bool v);
 
   QString file_;
-  ScriptList scripts_;
+  ScriptArchive archive_;
   int current_row_;
 
   QSplitter splitter_;

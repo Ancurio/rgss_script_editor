@@ -111,24 +111,32 @@ bool RGSS_MainWindow::scriptArchiveOpened() const {
   return not file_.isEmpty();
 }
 
+static const char *fileFilter =
+    QT_TRANSLATE_NOOP("RGSS_MainWindow",
+    "RMXP Archive (Scripts.rxdata);;"
+    "RMVX Archive (Scripts.rvdata);;"
+    "RMVX Ace Archive (Scripts.rvdata2);;"
+    "All files (*)");
+
 void RGSS_MainWindow::openScriptArchive() {
+
   QString const f = QFileDialog::getOpenFileName(
-      this, tr("Select script archive to open..."), QDir::homePath(),
-      tr("Script Archive (Scripts.rxdata);; Other rxdata (*.rxdata)"));
+      this, tr("Select script archive to open..."), QDir::homePath(), tr(fileFilter));
+
   if(f.isNull()) { return; } // check cancel
   setScriptArchive(f);
 }
 
 void RGSS_MainWindow::saveScriptArchiveAs() {
   QString const f = QFileDialog::getSaveFileName(
-      this, tr("Select saving file..."), QFileInfo(file_).dir().path());
+      this, tr("Select saving file..."), QFileInfo(file_).dir().path(), tr(fileFilter));
   if(f.isNull()) { return; } // check cancel
   saveScriptArchiveAs(f);
 }
 
 void RGSS_MainWindow::closeScriptArchive() {
   file_ = QString();
-  scripts_.clear();
+  archive_.scripts.clear();
   current_row_ = 0;
 
   script_editor_.setText(QString());
@@ -141,23 +149,23 @@ void RGSS_MainWindow::closeScriptArchive() {
 void RGSS_MainWindow::setCurrentIndex(int idx) {
   if(not scriptArchiveOpened()) { return; }
 
-  Q_ASSERT(QVector<Script>::size_type(idx) < scripts_.size());
-  Q_ASSERT(QVector<Script>::size_type(current_row_) < scripts_.size());
+  Q_ASSERT(ScriptList::size_type(idx) < archive_.scripts.size());
+  Q_ASSERT(ScriptList::size_type(current_row_) < archive_.scripts.size());
 
   std::string const script = script_editor_.text().toStdString();
   if(not parseScript(script)) {
-    QString const syntax_err = "Syntax error in "
-        + QString::fromStdString(scripts_[current_row_].name);
+    QString const syntax_err = "Syntax error in " + archive_.scripts[current_row_].name;
     QMessageBox::warning(this, "Syntax error", syntax_err);
     return;
   }
 
   if(script_editor_.isModified()) {
-    scripts_[current_row_].data = script;
+    archive_.scripts[current_row_].data = script_editor_.text();
     script_editor_.setModified(false);
   }
-  script_editor_.setText(QString::fromStdString(scripts_[idx].data));
-  script_name_editor_.setText(QString::fromStdString(scripts_[idx].name));
+
+  script_editor_.setText(archive_.scripts[idx].data);
+  script_name_editor_.setText(archive_.scripts[idx].name);
 
   std::swap(idx, current_row_);
 }
@@ -165,25 +173,34 @@ void RGSS_MainWindow::setCurrentIndex(int idx) {
 void RGSS_MainWindow::scriptNameEdited(QString const& name) {
   Q_ASSERT(current_row_ == script_list_.currentRow());
   script_list_.currentItem()->setText(name);
-  scripts_[current_row_].name = name.toStdString();
+  archive_.scripts[current_row_].name = name;
 }
 
 void RGSS_MainWindow::setScriptArchive(QString const& file) {
-  if(not QFileInfo(file).exists()) { return; }
+  QFile archiveFile(file);
+  if (!archiveFile.open(QFile::ReadOnly)) {
+    QMessageBox::critical(this, "File reading error.", "Cannot open file: " + file);
+    return;
+  }
 
-  ScriptList tmp;
-  if(not loadScripts(file.toStdString(), tmp)) { return; }
+  try {
+    archive_.read(archiveFile);
+    archiveFile.close();
+  }
+  catch (const QByteArray &error) {
+    QMessageBox::critical(this, "File reading error.", "Cannot read: " + file + "\n" + error);
+    return;
+  }
 
-  scripts_.swap(tmp);
   file_ = QFileInfo(file).absoluteFilePath();
 
   script_list_.clear();
-  for(ScriptList::const_iterator i = scripts_.begin(); i < scripts_.end(); ++i) {
-    script_list_.addItem(QString::fromStdString(i->name));
+  for(ScriptList::const_iterator i = archive_.scripts.begin(); i < archive_.scripts.end(); ++i) {
+    script_list_.addItem(i->name);
   }
 
   int const current_row = script_list_.currentRow();
-  int const next_row = std::max(std::min<int>(current_row, scripts_.size() - 1), 0);
+  int const next_row = std::max(std::min<int>(current_row, archive_.scripts.size() - 1), 0);
   current_row_ = next_row;
   script_list_.setCurrentRow(next_row);
 
@@ -192,7 +209,7 @@ void RGSS_MainWindow::setScriptArchive(QString const& file) {
 
 void RGSS_MainWindow::saveScriptArchive() {
   if(script_editor_.isModified()) {
-    scripts_[current_row_].data = script_editor_.text().toStdString();
+    archive_.scripts[current_row_].data = script_editor_.text();
     script_editor_.setModified(false);
   }
 
@@ -200,11 +217,37 @@ void RGSS_MainWindow::saveScriptArchive() {
 }
 
 void RGSS_MainWindow::saveScriptArchiveAs(QString const& file) {
-  bool result = dumpScripts(file.toStdString(), scripts_);
-  if(result and QFileInfo(file).exists()) {
-    // update file name
-    file_ = QFileInfo(file).absoluteFilePath();
-  } else {
-    QMessageBox::critical(this, "File saving error.", "Cannot save: " + file);
+  /* Determine marshal format */
+  QFileInfo finfo(file);
+  QString fileExt = finfo.suffix();
+  ScriptArchive::Format format;
+
+  if (fileExt == "rxdata")
+    format = ScriptArchive::XP;
+  else if (fileExt == "rvdata")
+    format = ScriptArchive::XP;
+  else if (fileExt == "rvdata2")
+    format = ScriptArchive::VXAce;
+  else {
+    QMessageBox::critical(this, "File saving error.", "Unrecognized file extension: " + fileExt);
+    return;
   }
+
+  QFile archiveFile(file);
+  if (!archiveFile.open(QFile::WriteOnly)) {
+    QMessageBox::critical(this, "File saving error.", "Cannot open for writing: " + file);
+    return;
+  }
+
+  try {
+    archive_.write(archiveFile, format);
+    archiveFile.close();
+  }
+  catch (const QByteArray &) {
+    QMessageBox::critical(this, "File saving error.", "Cannot save: " + file);
+    return;
+  }
+
+  /* Update filename */
+  file_ = QFileInfo(file).absoluteFilePath();
 }
