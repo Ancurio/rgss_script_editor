@@ -5,17 +5,16 @@
 #include <QtCore/QTextCodec>
 
 int main(int argc, char* argv[]) {
-  RubyInstance ruby_inst;
-  (void)ruby_inst;
-
   QApplication app(argc, argv);
 
   QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
 
-  RGSS_MainWindow main;
-  if(argc == 2) {
-    main.setScriptArchive(QString::fromUtf8(argv[1]));
+  QString initial_path;
+  if(argc >= 2) {
+    initial_path = QString::fromUtf8(argv[1]);
   }
+
+  RGSS_MainWindow main(initial_path);
   main.show();
 
   main.activateWindow();

@@ -1,5 +1,4 @@
 extern "C" {
-#include <ruby.h>
 #include <zlib.h>
 }
 
@@ -232,6 +231,14 @@ static void verifyHeader(QIODevice &dev)
   verifyByte(dev, 8, error);
 }
 
+void ScriptArchive::rehashIDs()
+{
+  id_hash.clear();
+
+  for (int i = 0; i < scripts.count(); ++i)
+    id_hash.insert(scripts[i].id, &scripts[i]);
+}
+
 void ScriptArchive::read(QIODevice &dev)
 {
   verifyHeader(dev);
@@ -245,9 +252,12 @@ void ScriptArchive::read(QIODevice &dev)
   scripts.clear();
   scripts.resize(scriptCount);
 
+  id_counter = 0;
+
   try {
     for (int i = 0; i < scriptCount; ++i) {
       scripts[i] = readScript(dev);
+      scripts[i].id = id_counter++;
     }
   }
   catch (const QByteArray &error) {
@@ -255,6 +265,8 @@ void ScriptArchive::read(QIODevice &dev)
     scripts = old;
     throw error;
   }
+
+  rehashIDs();
 }
 
 static void writeByte(QIODevice &dev, char byte)
@@ -388,17 +400,4 @@ void ScriptArchive::write(QIODevice &dev, Format format)
   /* Write scripts */
   for (int i = 0; i < scripts.count(); ++i)
     writeScript(dev, scripts[i], format);
-}
-
-
-RubyInstance::RubyInstance() {
-#ifdef RUBY_INIT_STACK
-  RUBY_INIT_STACK;
-#endif
-  ruby_init();
-  ruby_init_loadpath();
-}
-
-RubyInstance::~RubyInstance() {
-  ruby_finalize();
 }

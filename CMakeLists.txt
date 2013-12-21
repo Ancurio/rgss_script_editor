@@ -10,7 +10,6 @@ find_package(Qt4 REQUIRED QtCore QtGui)
 include(${QT_USE_FILE})
 add_definitions(${QT_DEFINITIONS})
 
-find_package(Ruby REQUIRED)
 find_package(QScintilla REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -27,5 +26,5 @@ aux_source_directory("${CMAKE_CURRENT_SOURCE_DIR}/src/qt" EDITOR_QT_SRCS)
 list(APPEND EDITOR_QT_SRCS "${QT_MOC_OUTPUT}")
 add_executable("${PROJECT_NAME}" ${EDITOR_SRCS} ${EDITOR_QT_SRCS})
 target_link_libraries("${PROJECT_NAME}"
-  ${RUBY_LIBRARY} ${QT_LIBRARIES}
+  ${QT_LIBRARIES}
   ${QSCINTILLA_LIBRARY} ${ZLIB_LIBRARIES})
