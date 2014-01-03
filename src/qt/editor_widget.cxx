@@ -19,7 +19,14 @@ void EditorWidget::dragEnterEvent(QDragEnterEvent *e)
     return;
   }
 
-  QString filename = e->mimeData()->urls().first().toLocalFile();
+  QList<QUrl> urls = e->mimeData()->urls();
+
+  if (urls.isEmpty()) {
+	  e->ignore();
+      return;
+  }
+
+  QString filename = urls.first().toLocalFile();
   QString suffix = QFileInfo(filename).suffix();
 
   if (suffix != "rxdata" && suffix != "rxdata2") {
