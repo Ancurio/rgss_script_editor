@@ -245,6 +245,8 @@ void RGSS_MainWindow::onArchiveDropped(const QString &filename)
     closeScriptArchive();
 
   loadScriptArchive(filename);
+
+  updateWindowTitle();
 }
 
 void RGSS_MainWindow::enableEditing(bool v) {
@@ -314,6 +316,8 @@ void RGSS_MainWindow::onOpenArchive() {
     closeScriptArchive();
 
   loadScriptArchive(f);
+
+  updateWindowTitle();
 }
 
 bool RGSS_MainWindow::onSaveArchiveAs() {
