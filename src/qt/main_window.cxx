@@ -106,7 +106,6 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   splitter_.setSizes(sizes);
 
   setupEditor(dummy_editor);
-  dummy_editor.setEnabled(false);
   connect(&dummy_editor, SIGNAL(archiveDropped(QString)), SLOT(onArchiveDropped(QString)));
 
   connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(onScriptIndexChange(int)));
