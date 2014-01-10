@@ -5,11 +5,16 @@
 #include <QDropEvent>
 #include <QUrl>
 #include <QFileInfo>
-#include <QDebug>
+#include <QPalette>
+
 EditorWidget::EditorWidget(QWidget *parent)
   : QsciScintilla(parent)
 {
   setAcceptDrops(true);
+
+  // Set cursor color to text color
+  const QColor &textColor = palette().text().color();
+  setCaretForegroundColor(textColor);
 }
 
 void EditorWidget::dragEnterEvent(QDragEnterEvent *e)
