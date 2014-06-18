@@ -7,6 +7,8 @@
 #include <QtGui/QWidget>
 #include <QtGui/QLineEdit>
 #include <QtGui/QStackedWidget>
+#include <QtGui/QMenu>
+#include <QtGui/QAction>
 #include <QtCore/QHash>
 #include <QtCore/QFileInfo>
 
@@ -37,6 +39,10 @@ class RGSS_MainWindow : public QMainWindow {
   void onScriptEditorModified();
   void onArchiveDropped(const QString &);
 
+  void onShowContextMenu(const QPoint &);
+  void onInsertScript();
+  void onDeleteScript();
+
  private:
   void loadScriptArchive(QString const& file, bool show_errors = true);
   bool saveScriptArchiveAs(QString const& file);
@@ -45,6 +51,7 @@ class RGSS_MainWindow : public QMainWindow {
   void enableEditing(bool v);
   void updateWindowTitle();
   void setupLoadedArchive();
+  void scriptCountChanged();
 
   void closeEvent(QCloseEvent *);
 
@@ -82,6 +89,9 @@ class RGSS_MainWindow : public QMainWindow {
   QWidget left_side_;
   QListWidget script_list_;
   QLineEdit script_name_editor_;
+
+  QMenu edit_menu_;
+  QAction *delete_action_;
 
   QStackedWidget editor_stack;
 

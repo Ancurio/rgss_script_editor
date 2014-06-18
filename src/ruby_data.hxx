@@ -33,6 +33,9 @@ struct ScriptArchive
   void read(QIODevice &dev);
   void write(QIODevice &dev, Format format);
 
+  void insertScript(int idx);
+  void deleteScript(int idx);
+
   QVector<Script> scripts;
 
   Script *getScriptForID(int id) { return id_hash.value(id, 0); }

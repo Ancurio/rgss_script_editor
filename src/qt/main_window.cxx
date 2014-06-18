@@ -76,10 +76,19 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
     connect(close, SIGNAL(triggered()), SLOT(onCloseArchive()));
     file->addAction(close);
 
-    QMenu* const edit = new QMenu("Edit", menu_bar);
+    edit_menu_.setTitle(tr("Edit"));
+
+    QAction* const insert = new QAction(tr("Insert"), menu_bar);
+    connect(insert, SIGNAL(triggered()), SLOT(onInsertScript()));
+    edit_menu_.addAction(insert);
+
+    delete_action_ = new QAction(tr("Delete"), menu_bar);
+    connect(delete_action_, SIGNAL(triggered()), SLOT(onDeleteScript()));
+    delete_action_->setShortcut(QKeySequence(QKeySequence::Delete));
+    edit_menu_.addAction(delete_action_);
 
     menu_bar->addMenu(file);
-    menu_bar->addMenu(edit);
+    menu_bar->addMenu(&edit_menu_);
   }
   setMenuBar(menu_bar);
 
@@ -89,6 +98,8 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   left_side_.setLayout(new QVBoxLayout(&left_side_));
   left_side_.layout()->addWidget(&script_list_);
   left_side_.layout()->addWidget(&script_name_editor_);
+  left_side_.setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(&left_side_, SIGNAL(customContextMenuRequested(QPoint)), SLOT(onShowContextMenu(QPoint)));
 
   editor_stack.addWidget(&dummy_editor);
 
@@ -249,9 +260,48 @@ void RGSS_MainWindow::onArchiveDropped(const QString &filename)
   updateWindowTitle();
 }
 
+void RGSS_MainWindow::onShowContextMenu(const QPoint &p)
+{
+  edit_menu_.exec(left_side_.mapToGlobal(p));
+}
+
+void RGSS_MainWindow::onInsertScript()
+{
+  int row = std::max(current_row_, 0);
+
+  archive_.insertScript(row);
+  script_list_.insertItem(row, "");
+  script_list_.setCurrentRow(row);
+
+  setDataModified(true);
+  scriptCountChanged();
+}
+
+void RGSS_MainWindow::onDeleteScript()
+{
+  if (archive_.scripts.size() == 0)
+    return;
+
+  int row = script_list_.currentRow();
+
+  int id = archive_.scripts[row].id;
+  EditorWidget *editor = editor_hash.value(id);
+  editor_hash.remove(id);
+  recycled_editors.append(editor);
+
+  /* Need to delete the item first because the reported
+   * new current row is still based on the old item count */
+  delete script_list_.takeItem(row);
+  archive_.deleteScript(row);
+
+  setDataModified(true);
+  scriptCountChanged();
+}
+
 void RGSS_MainWindow::enableEditing(bool v) {
   script_name_editor_.setEnabled(v);
   script_list_.setEnabled(v);
+  edit_menu_.setEnabled(v);
 }
 
 void RGSS_MainWindow::updateWindowTitle() {
@@ -280,6 +330,12 @@ void RGSS_MainWindow::setupLoadedArchive()
   archive_opened = true;
 
   enableEditing(true);
+  scriptCountChanged();
+}
+
+void RGSS_MainWindow::scriptCountChanged()
+{
+  delete_action_->setEnabled(archive_.scripts.size() > 0);
 }
 
 void RGSS_MainWindow::closeEvent(QCloseEvent *ce)

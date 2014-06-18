@@ -401,3 +401,18 @@ void ScriptArchive::write(QIODevice &dev, Format format)
   for (int i = 0; i < scripts.count(); ++i)
     writeScript(dev, scripts[i], format);
 }
+
+void ScriptArchive::insertScript(int idx)
+{
+  Script script;
+  script.id = id_counter++;
+
+  scripts.insert(idx, script);
+  rehashIDs();
+}
+
+void ScriptArchive::deleteScript(int idx)
+{
+  scripts.remove(idx);
+  rehashIDs();
+}
