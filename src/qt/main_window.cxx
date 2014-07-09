@@ -547,6 +547,8 @@ void RGSS_MainWindow::onScriptNameEdited(QString const& name) {
   Q_ASSERT(current_row_ == script_list_.currentRow());
   script_list_.currentItem()->setText(name);
   archive_.scripts[current_row_].name = name;
+
+  setDataModified(true);
 }
 
 void RGSS_MainWindow::loadScriptArchive(QString const& file, bool show_errors) {
