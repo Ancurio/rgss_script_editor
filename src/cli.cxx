@@ -80,7 +80,6 @@ int import(QString src_folder, ScriptArchive &archive) {
 		script.magic = 0;
 		script.name = scName;
 		script.data = scData;
-		script.id = scIdx;
 
 		scripts.append(script);
 
@@ -88,7 +87,6 @@ int import(QString src_folder, ScriptArchive &archive) {
 	}
 
 	archive.scripts = scripts;
-	archive.rehashIDs();
 
 	return 0;
 }
