@@ -21,10 +21,27 @@ include_directories(
 file(GLOB QT_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/qt/*.hxx")
 qt4_wrap_cpp(QT_MOC_OUTPUT ${QT_HEADERS})
 
-aux_source_directory("${CMAKE_CURRENT_SOURCE_DIR}/src" EDITOR_SRCS)
-aux_source_directory("${CMAKE_CURRENT_SOURCE_DIR}/src/qt" EDITOR_QT_SRCS)
-list(APPEND EDITOR_QT_SRCS "${QT_MOC_OUTPUT}")
-add_executable("${PROJECT_NAME}" ${EDITOR_SRCS} ${EDITOR_QT_SRCS})
+set(EDITOR_SRCS
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/main.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/ruby_data.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/editor_widget.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/main_window.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/savediscard_dialog.cxx"
+	)
+set(CLI_SRCS
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/ruby_data.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/cli.cxx"
+	)
+
+list(APPEND EDITOR_SRCS "${QT_MOC_OUTPUT}")
+
+add_executable("${PROJECT_NAME}" ${EDITOR_SRCS})
+add_executable("${PROJECT_NAME}_cli" ${CLI_SRCS})
+
 target_link_libraries("${PROJECT_NAME}"
+  ${QT_LIBRARIES}
+  ${QSCINTILLA_LIBRARY} ${ZLIB_LIBRARIES})
+target_link_libraries("${PROJECT_NAME}_cli"
   ${QT_LIBRARIES}
   ${QSCINTILLA_LIBRARY} ${ZLIB_LIBRARIES})
