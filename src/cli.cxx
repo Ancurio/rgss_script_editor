@@ -93,7 +93,7 @@ int import(QString src_folder, ScriptArchive &archive) {
 
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
-		puts("Wrong number of arguments (cli <input directory> <output filename>");
+		puts("Wrong number of arguments (cli <input directory> <output filename>)");
 		return 1;
 	}
 	const QString src_folder = QString::fromLocal8Bit(argv[1]);
