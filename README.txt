@@ -4,5 +4,4 @@ Dependencies:
 	Qt
 	CMake (build only)
 
-This needs a license and copyright info.
-
+Licensed under the MIT license (see COPYING).
