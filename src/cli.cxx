@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 	const QString src_folder = QString::fromLocal8Bit(argv[1]);
 	const QString out_file = QString::fromLocal8Bit(argv[2]);
 	ScriptArchive archive;
-	import(src_folder, archive);
-	saveArchive(out_file, archive);
+	if (import(src_folder, archive)) return 1;
+	if (saveArchive(out_file, archive)) return 1;
 	return 0;
 }
