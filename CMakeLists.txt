@@ -28,6 +28,7 @@ set(EDITOR_SRCS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/editor_widget.cxx"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/main_window.cxx"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/savediscard_dialog.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/script_archive.cxx"
 	)
 set(CLI_SRCS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/ruby_data.cxx"

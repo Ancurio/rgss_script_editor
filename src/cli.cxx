@@ -10,18 +10,18 @@
 
 using namespace std;
 
-int saveArchive(QString const& file, ScriptArchive &archive) {
+int saveScripts(QString const& file, const ScriptList &scripts) {
   /* Determine marshal format */
   QFileInfo finfo(file);
   QString fileExt = finfo.suffix();
-  ScriptArchive::Format format;
+  Script::Format format;
 
   if (fileExt == "rxdata")
-    format = ScriptArchive::XP;
+    format = Script::XP;
   else if (fileExt == "rvdata")
-    format = ScriptArchive::XP;
+    format = Script::XP;
   else if (fileExt == "rvdata2")
-    format = ScriptArchive::VXAce;
+    format = Script::VXAce;
   else {
     cerr << "Unrecognized file extension: " << fileExt.toUtf8().constData() << endl;
     return 1;
@@ -34,7 +34,7 @@ int saveArchive(QString const& file, ScriptArchive &archive) {
   }
 
   try {
-    archive.write(archiveFile, format);
+    writeScripts(scripts, archiveFile, format);
     archiveFile.close();
   }
   catch (const QByteArray &) {
@@ -45,7 +45,7 @@ int saveArchive(QString const& file, ScriptArchive &archive) {
   return 0;
 }
 
-int import(QString src_folder, ScriptArchive &archive) {
+int import(QString src_folder, ScriptList &scripts) {
 	if (src_folder.isEmpty())
 		return 1;
 
@@ -55,8 +55,6 @@ int import(QString src_folder, ScriptArchive &archive) {
 		cerr << "Cannot open index file" << endl;
 		return 1;
 	}
-
-	QVector<ScriptArchive::Script> scripts;
 
 	QTextStream indStream(&indFile);
 	int scIdx = 0;
@@ -76,7 +74,7 @@ int import(QString src_folder, ScriptArchive &archive) {
 		QByteArray scData = scFile.readAll();
 		scFile.close();
 
-		ScriptArchive::Script script;
+		Script script;
 		script.magic = 0;
 		script.name = scName;
 		script.data = scData;
@@ -85,8 +83,6 @@ int import(QString src_folder, ScriptArchive &archive) {
 
 		++scIdx;
 	}
-
-	archive.scripts = scripts;
 
 	return 0;
 }
@@ -98,8 +94,8 @@ int main(int argc, char* argv[]) {
 	}
 	const QString src_folder = QString::fromLocal8Bit(argv[1]);
 	const QString out_file = QString::fromLocal8Bit(argv[2]);
-	ScriptArchive archive;
-	if (import(src_folder, archive)) return 1;
-	if (saveArchive(out_file, archive)) return 1;
+	ScriptList scripts;
+	if (import(src_folder, scripts)) return 1;
+	if (saveScripts(out_file, scripts)) return 1;
 	return 0;
 }

@@ -3,7 +3,7 @@
 
 #include <QtGui/QMainWindow>
 #include <QtGui/QSplitter>
-#include <QtGui/QListWidget>
+#include <QtGui/QListView>
 #include <QtGui/QWidget>
 #include <QtGui/QLineEdit>
 #include <QtGui/QStackedWidget>
@@ -14,7 +14,7 @@
 
 #include <Qsci/qsciscintilla.h>
 
-#include "ruby_data.hxx"
+#include "script_archive.hxx"
 #include "editor_widget.hxx"
 
 class RGSS_MainWindow : public QMainWindow {
@@ -34,7 +34,7 @@ class RGSS_MainWindow : public QMainWindow {
   void onCloseArchive();
 
  private slots:
-  void onScriptIndexChange(int idx);
+  void onScriptIndexChange(QModelIndex current, QModelIndex);
   void onScriptNameEdited(QString const& name);
   void onScriptEditorModified();
   void onArchiveDropped(const QString &);
@@ -42,6 +42,8 @@ class RGSS_MainWindow : public QMainWindow {
   void onShowContextMenu(const QPoint &);
   void onInsertScript();
   void onDeleteScript();
+
+  void onScriptCountChanged(int);
 
  private:
   void loadScriptArchive(QString const& file, bool show_errors = true);
@@ -51,11 +53,12 @@ class RGSS_MainWindow : public QMainWindow {
   void enableEditing(bool v);
   void updateWindowTitle();
   void setupLoadedArchive();
-  void scriptCountChanged();
 
   void closeEvent(QCloseEvent *);
 
-  EditorWidget *getEditorForScript(const ScriptArchive::Script &script);
+  EditorWidget *getEditorForScript(Script *script);
+
+  QModelIndex getCurrentIndex();
 
   /* Stores text changed in editors back
    * into the respective script struct */
@@ -82,12 +85,11 @@ class RGSS_MainWindow : public QMainWindow {
   QString last_valid_folder_impexp;
 
   ScriptArchive archive_;
-  int current_row_;
   bool data_modified_;
 
   QSplitter splitter_;
   QWidget left_side_;
-  QListWidget script_list_;
+  QListView script_list_;
   QLineEdit script_name_editor_;
 
   QMenu edit_menu_;
@@ -98,7 +100,7 @@ class RGSS_MainWindow : public QMainWindow {
   /* Is only shown when no archive is opened */
   EditorWidget dummy_editor;
 
-  QHash<int, EditorWidget*> editor_hash;
+  QHash<Script*, EditorWidget*> editor_hash;
 
   QList<EditorWidget*> recycled_editors;
 };

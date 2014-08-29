@@ -8,6 +8,7 @@ extern "C" {
 #include <QByteArray>
 
 
+
 bool parseScript(std::string const&) {
   // TODO
   return true;
@@ -197,9 +198,9 @@ static QString UTF8ToQString(const QByteArray &data)
   return QString::fromUtf8(data.constData(), data.size());
 }
 
-static ScriptArchive::Script readScript(QIODevice &dev)
+static Script readScript(QIODevice &dev)
 {
-  ScriptArchive::Script script;
+  Script script;
 
   /* Verify array prologue */
   verifyByte(dev, '[');
@@ -229,44 +230,6 @@ static void verifyHeader(QIODevice &dev)
 
   verifyByte(dev, 4, error);
   verifyByte(dev, 8, error);
-}
-
-void ScriptArchive::rehashIDs()
-{
-  id_hash.clear();
-
-  for (int i = 0; i < scripts.count(); ++i)
-    id_hash.insert(scripts[i].id, &scripts[i]);
-}
-
-void ScriptArchive::read(QIODevice &dev)
-{
-  verifyHeader(dev);
-
-  /* Read array prologue */
-  verifyByte(dev, '[');
-  int scriptCount = readFixnum(dev);
-
-  /* Read scripts */
-  ScriptList old = scripts;
-  scripts.clear();
-  scripts.resize(scriptCount);
-
-  id_counter = 0;
-
-  try {
-    for (int i = 0; i < scriptCount; ++i) {
-      scripts[i] = readScript(dev);
-      scripts[i].id = id_counter++;
-    }
-  }
-  catch (const QByteArray &error) {
-    /* Restore previous state on error */
-    scripts = old;
-    throw error;
-  }
-
-  rehashIDs();
 }
 
 static void writeByte(QIODevice &dev, char byte)
@@ -355,9 +318,9 @@ static void writeIVARString(QIODevice &dev, const QByteArray &data)
 }
 
 static void writeRubyString(QIODevice &dev, const QByteArray &data,
-                            ScriptArchive::Format format)
+                            Script::Format format)
 {
-  if (format == ScriptArchive::XP) {
+  if (format == Script::XP) {
     writeByte(dev, '"');
     writeString(dev, data);
   }
@@ -367,8 +330,8 @@ static void writeRubyString(QIODevice &dev, const QByteArray &data,
   }
 }
 
-static void writeScript(QIODevice &dev, const ScriptArchive::Script &script,
-                        ScriptArchive::Format format)
+static void writeScript(QIODevice &dev, const Script &script,
+                        Script::Format format)
 {
   /* Write array prologue */
   writeByte(dev, '[');
@@ -387,7 +350,31 @@ static void writeScript(QIODevice &dev, const ScriptArchive::Script &script,
   writeRubyString(dev, data, format);
 }
 
-void ScriptArchive::write(QIODevice &dev, Format format)
+ScriptList readScripts(QIODevice &dev)
+{
+  verifyHeader(dev);
+
+  /* Read array prologue */
+  verifyByte(dev, '[');
+  int scriptCount = readFixnum(dev);
+
+  /* Read scripts */
+  ScriptList scripts;
+
+  try {
+    for (int i = 0; i < scriptCount; ++i) {
+      scripts.append(readScript(dev));
+    }
+  }
+  catch (const QByteArray &error) {
+    throw error;
+  }
+
+  return scripts;
+}
+
+void writeScripts(const ScriptList &scripts,
+                  QIODevice &dev, Script::Format format)
 {
   /* Write header */
   writeByte(dev, 4);
@@ -400,19 +387,4 @@ void ScriptArchive::write(QIODevice &dev, Format format)
   /* Write scripts */
   for (int i = 0; i < scripts.count(); ++i)
     writeScript(dev, scripts[i], format);
-}
-
-void ScriptArchive::insertScript(int idx)
-{
-  Script script;
-  script.id = id_counter++;
-
-  scripts.insert(idx, script);
-  rehashIDs();
-}
-
-void ScriptArchive::deleteScript(int idx)
-{
-  scripts.remove(idx);
-  rehashIDs();
 }

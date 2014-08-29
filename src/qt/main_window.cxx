@@ -26,7 +26,6 @@
 RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
                                  QWidget* const parent, Qt::WindowFlags const flags)
     : QMainWindow(parent, flags)
-    , current_row_(0)
     , data_modified_(false)
 {
   /* Read settings */
@@ -95,6 +94,8 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   splitter_.setOrientation(Qt::Horizontal);
   setCentralWidget(&splitter_);
 
+  script_list_.setModel(&archive_);
+
   left_side_.setLayout(new QVBoxLayout(&left_side_));
   left_side_.layout()->addWidget(&script_list_);
   left_side_.layout()->addWidget(&script_name_editor_);
@@ -119,8 +120,10 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   setupEditor(dummy_editor);
   connect(&dummy_editor, SIGNAL(archiveDropped(QString)), SLOT(onArchiveDropped(QString)));
 
-  connect(&script_list_, SIGNAL(currentRowChanged(int)), SLOT(onScriptIndexChange(int)));
+  connect(script_list_.selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SLOT(onScriptIndexChange(QModelIndex,QModelIndex)));
   connect(&script_name_editor_, SIGNAL(textEdited(QString)), SLOT(onScriptNameEdited(QString)));
+
+  connect(&archive_, SIGNAL(scriptCountChanged(int)), SLOT(onScriptCountChanged(int)));
 
   enableEditing(false);
 
@@ -162,12 +165,12 @@ void RGSS_MainWindow::setupEditor(QsciScintilla &editor)
   editor.setAutoCompletionSource(QsciScintilla::AcsAll);
 }
 
-EditorWidget *RGSS_MainWindow::getEditorForScript(const ScriptArchive::Script &script)
+EditorWidget *RGSS_MainWindow::getEditorForScript(Script *script)
 {
   /* If we already have an editor associated
    * with this script, just return that */
-  if (editor_hash.contains(script.id))
-    return editor_hash.value(script.id);
+  if (editor_hash.contains(script))
+    return editor_hash.value(script);
 
   /* Otherwise, create (or recycle) a new one */
   EditorWidget *editor;
@@ -184,8 +187,8 @@ EditorWidget *RGSS_MainWindow::getEditorForScript(const ScriptArchive::Script &s
   }
 
   /* Associate editor with script */
-  editor->setText(script.data);
-  editor_hash.insert(script.id, editor);
+  editor->setText(script->data);
+  editor_hash.insert(script, editor);
 
   /* Listen for text changes */
   connect(editor, SIGNAL(textChanged()), SLOT(onScriptEditorModified()));
@@ -193,19 +196,21 @@ EditorWidget *RGSS_MainWindow::getEditorForScript(const ScriptArchive::Script &s
   return editor;
 }
 
+QModelIndex RGSS_MainWindow::getCurrentIndex()
+{
+  return script_list_.selectionModel()->currentIndex();
+}
+
 void RGSS_MainWindow::storeChangedScripts()
 {
-  QHash<int, EditorWidget*>::const_iterator iter;
+  QHash<Script*, EditorWidget*>::const_iterator iter;
   for (iter = editor_hash.constBegin(); iter != editor_hash.constEnd(); ++iter) {
     QsciScintilla *editor = iter.value();
 
     if (!editor->isModified())
       continue;
 
-    ScriptArchive::Script *script = archive_.getScriptForID(iter.key());
-    Q_ASSERT(script);
-
-    script->data = editor->text();
+    iter.key()->data = editor->text();
     editor->setModified(false);
   }
 }
@@ -267,35 +272,31 @@ void RGSS_MainWindow::onShowContextMenu(const QPoint &p)
 
 void RGSS_MainWindow::onInsertScript()
 {
-  int row = std::max(current_row_, 0);
+  int row = getCurrentIndex().row();
 
-  archive_.insertScript(row);
-  script_list_.insertItem(row, "");
-  script_list_.setCurrentRow(row);
+  archive_.insertRow(row);
+  script_list_.setCurrentIndex(archive_.index(row));
 
   setDataModified(true);
-  scriptCountChanged();
 }
 
 void RGSS_MainWindow::onDeleteScript()
 {
-  if (archive_.scripts.size() == 0)
+  QModelIndex current_index = getCurrentIndex();
+
+  if (!current_index.isValid())
     return;
 
-  int row = script_list_.currentRow();
+  int row = current_index.row();
 
-  int id = archive_.scripts[row].id;
-  EditorWidget *editor = editor_hash.value(id);
-  editor_hash.remove(id);
+  Script *script = archive_.indexToScript(getCurrentIndex());
+  EditorWidget *editor = editor_hash.value(script);
+  editor_hash.remove(script);
   recycled_editors.append(editor);
 
-  /* Need to delete the item first because the reported
-   * new current row is still based on the old item count */
-  delete script_list_.takeItem(row);
-  archive_.deleteScript(row);
+  archive_.removeRow(row);
 
   setDataModified(true);
-  scriptCountChanged();
 }
 
 void RGSS_MainWindow::enableEditing(bool v) {
@@ -318,24 +319,16 @@ void RGSS_MainWindow::updateWindowTitle() {
 
 void RGSS_MainWindow::setupLoadedArchive()
 {
-  int const next_row = std::max(std::min<int>(current_row_, archive_.scripts.size() - 1), 0);
-
-  script_list_.clear();
-  for(ScriptList::const_iterator i = archive_.scripts.begin(); i < archive_.scripts.end(); ++i) {
-    script_list_.addItem(i->name);
-  }
-
-  script_list_.setCurrentRow(next_row);
-
   archive_opened = true;
 
   enableEditing(true);
-  scriptCountChanged();
+  updateWindowTitle();
+  script_list_.setCurrentIndex(archive_.index(0));
 }
 
-void RGSS_MainWindow::scriptCountChanged()
+void RGSS_MainWindow::onScriptCountChanged(int newCount)
 {
-  delete_action_->setEnabled(archive_.scripts.size() > 0);
+  delete_action_->setEnabled(newCount > 0);
 }
 
 void RGSS_MainWindow::closeEvent(QCloseEvent *ce)
@@ -372,8 +365,6 @@ void RGSS_MainWindow::onOpenArchive() {
     closeScriptArchive();
 
   loadScriptArchive(f);
-
-  updateWindowTitle();
 }
 
 bool RGSS_MainWindow::onSaveArchiveAs() {
@@ -406,7 +397,7 @@ void RGSS_MainWindow::onImportScripts()
   QTextStream indStream(&indFile);
   int scIdx = 0;
 
-  QVector<ScriptArchive::Script> scripts;
+  ScriptList scripts;
 
   while (!indStream.atEnd())
   {
@@ -424,11 +415,10 @@ void RGSS_MainWindow::onImportScripts()
     QByteArray scData = scFile.readAll();
     scFile.close();
 
-    ScriptArchive::Script script;
+    Script script;
     script.magic = 0;
     script.name = scName;
     script.data = scData;
-    script.id = scIdx;
 
     scripts.append(script);
 
@@ -437,8 +427,7 @@ void RGSS_MainWindow::onImportScripts()
 
   closeScriptArchive();
 
-  archive_.scripts = scripts;
-  archive_.rehashIDs();
+  archive_.setScriptList(scripts);
 
   open_path = QString();
   setupLoadedArchive();
@@ -465,10 +454,11 @@ void RGSS_MainWindow::onExportScripts()
   storeChangedScripts();
 
   QTextStream indStream(&indFile);
+  ScriptList scripts = archive_.scriptList();
 
-  for (int i = 0; i < archive_.scripts.count(); ++i)
+  for (int i = 0; i < scripts.count(); ++i)
   {
-    const ScriptArchive::Script &sc = archive_.scripts[i];
+    const Script &sc = scripts[i];
 
     indStream << sc.name << "\n";
 
@@ -500,7 +490,7 @@ void RGSS_MainWindow::onCloseArchive()
 void RGSS_MainWindow::closeScriptArchive() {
 
   /* Recycle editor widgets for later use */
-  QHash<int, EditorWidget*>::const_iterator iter;
+  QHash<Script*, EditorWidget*>::const_iterator iter;
   for (iter = editor_hash.constBegin(); iter != editor_hash.constEnd(); ++iter) {
     EditorWidget *editor = iter.value();
 
@@ -513,10 +503,7 @@ void RGSS_MainWindow::closeScriptArchive() {
   editor_stack.setCurrentWidget(&dummy_editor);
 
   open_path = QString();
-  archive_.scripts.clear();
-  onScriptIndexChange(-1);
-
-  script_list_.clear();
+  archive_.clear();
 
   enableEditing(false);
 
@@ -525,29 +512,24 @@ void RGSS_MainWindow::closeScriptArchive() {
   setDataModified(false);
 }
 
-void RGSS_MainWindow::onScriptIndexChange(int idx) {
-  if (idx == -1) {
+void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
+{
+  Script *script = archive_.indexToScript(current);
+
+  script_name_editor_.setEnabled(script);
+
+  if (!script) {
     script_name_editor_.clear();
-    current_row_ = -1;
     editor_stack.setCurrentWidget(&dummy_editor);
     return;
   }
 
-  Q_ASSERT(ScriptList::size_type(idx) < archive_.scripts.size());
-  Q_ASSERT(ScriptList::size_type(current_row_) < archive_.scripts.size());
-
-  editor_stack.setCurrentWidget(getEditorForScript(archive_.scripts[idx]));
-
-  script_name_editor_.setText(archive_.scripts[idx].name);
-
-  std::swap(idx, current_row_);
+  editor_stack.setCurrentWidget(getEditorForScript(script));
+  script_name_editor_.setText(script->name);
 }
 
 void RGSS_MainWindow::onScriptNameEdited(QString const& name) {
-  Q_ASSERT(current_row_ == script_list_.currentRow());
-  script_list_.currentItem()->setText(name);
-  archive_.scripts[current_row_].name = name;
-
+  archive_.setData(getCurrentIndex(), name, Qt::DisplayRole);
   setDataModified(true);
 }
 
@@ -590,14 +572,14 @@ bool RGSS_MainWindow::saveScriptArchiveAs(QString const& file) {
   /* Determine marshal format */
   QFileInfo finfo(file);
   QString fileExt = finfo.suffix();
-  ScriptArchive::Format format;
+  Script::Format format;
 
   if (fileExt == "rxdata")
-    format = ScriptArchive::XP;
+    format = Script::XP;
   else if (fileExt == "rvdata")
-    format = ScriptArchive::XP;
+    format = Script::XP;
   else if (fileExt == "rvdata2")
-    format = ScriptArchive::VXAce;
+    format = Script::VXAce;
   else {
     QMessageBox::critical(this, "File saving error.", "Unrecognized file extension: " + fileExt);
     return false;
