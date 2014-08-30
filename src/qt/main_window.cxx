@@ -14,6 +14,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QTextStream>
 #include <QtCore/QSettings>
+#include <QtCore/QRegExp>
 
 #include <Qsci/qscilexerruby.h>
 
@@ -306,7 +307,13 @@ void RGSS_MainWindow::enableEditing(bool v) {
 }
 
 void RGSS_MainWindow::updateWindowTitle() {
-  QString title = open_path;
+  QString title;
+  QRegExp reg(".*/([^/.]*)/Data/Scripts.*");
+
+  if (reg.indexIn(open_path) != -1)
+    title = reg.cap(1);
+  else
+    title = open_path;
 
   if (title.isEmpty() && archive_opened)
     title = "(Untitled)";
