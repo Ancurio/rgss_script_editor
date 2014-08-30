@@ -34,7 +34,7 @@ void EditorWidget::dragEnterEvent(QDragEnterEvent *e)
   QString filename = urls.first().toLocalFile();
   QString suffix = QFileInfo(filename).suffix();
 
-  if (suffix != "rxdata" && suffix != "rxdata2") {
+  if (suffix != "rxdata" && suffix != "rvdata" && suffix != "rvdata2") {
     e->ignore();
     return;
   }
