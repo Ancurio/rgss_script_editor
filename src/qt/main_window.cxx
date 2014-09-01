@@ -308,7 +308,7 @@ void RGSS_MainWindow::enableEditing(bool v) {
 
 void RGSS_MainWindow::updateWindowTitle() {
   QString title;
-  QRegExp reg(".*/([^/.]*)/Data/Scripts.*");
+  QRegExp reg(".*/([^/]*)/Data/Scripts.*");
 
   if (reg.indexIn(open_path) != -1)
     title = reg.cap(1);
