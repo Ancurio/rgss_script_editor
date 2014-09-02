@@ -176,6 +176,7 @@ void RGSS_MainWindow::setupEditor(QsciScintilla &editor)
   editor.setFont(font);
   editor.setMarginsFont(font);
   QsciLexer* lexer = new QsciLexerRuby(&editor);
+  lexer->setFont(font, QsciLexerRuby::Comment);
   lexer->setDefaultFont(font);
   editor.setLexer(lexer);
 
