@@ -39,6 +39,7 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   last_valid_folder = settings.value("last_valid_folder", QDir::homePath()).toString();
   last_valid_folder_impexp =
       settings.value("last_valid_folder_impexp", QDir::homePath()).toString();
+  archive_.setScriptNumsVisible(settings.value("show_script_indices", false).toBool());
 
   resize(window_size);
 
@@ -94,8 +95,17 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
     connect(pin_action_, SIGNAL(triggered()), SLOT(onPinScript()));
     edit_menu_.addAction(pin_action_);
 
+    QMenu *view = new QMenu(this);
+    view->setTitle(tr("View"));
+    QAction *scriptnum = new QAction(tr("Show script indices"), menu_bar);
+    scriptnum->setCheckable(true);
+    scriptnum->setChecked(archive_.scriptNumsVisible());
+    connect(scriptnum, SIGNAL(toggled(bool)), &archive_, SLOT(setScriptNumsVisible(bool)));
+    view->addAction(scriptnum);
+
     menu_bar->addMenu(file);
     menu_bar->addMenu(&edit_menu_);
+    menu_bar->addMenu(view);
   }
   setMenuBar(menu_bar);
 
@@ -402,6 +412,7 @@ void RGSS_MainWindow::closeEvent(QCloseEvent *ce)
   settings.setValue("open_path", open_path);
   settings.setValue("last_valid_folder", last_valid_folder);
   settings.setValue("last_valid_folder_impexp", last_valid_folder_impexp);
+  settings.setValue("show_script_indices", archive_.scriptNumsVisible());
 }
 
 static const char *fileFilter =
