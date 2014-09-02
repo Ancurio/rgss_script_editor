@@ -2,6 +2,7 @@
 
 #include "savediscard_dialog.hxx"
 #include "editor_widget.hxx"
+#include "pinned_script_list.hxx"
 
 #include <QtGui/QAction>
 #include <QtGui/QKeySequence>
@@ -11,6 +12,7 @@
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QFileDialog>
 #include <QtGui/QCloseEvent>
+#include <QtGui/QApplication>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTextStream>
 #include <QtCore/QSettings>
@@ -28,6 +30,7 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
                                  QWidget* const parent, Qt::WindowFlags const flags)
     : QMainWindow(parent, flags)
     , data_modified_(false)
+    , pinned_model_(this)
 {
   /* Read settings */
   QSettings settings(SETTINGS_ORG, SETTINGS_APP);
@@ -87,6 +90,10 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
     delete_action_->setShortcut(QKeySequence(QKeySequence::Delete));
     edit_menu_.addAction(delete_action_);
 
+    pin_action_ = new QAction(tr("Pin"), menu_bar);
+    connect(pin_action_, SIGNAL(triggered()), SLOT(onPinScript()));
+    edit_menu_.addAction(pin_action_);
+
     menu_bar->addMenu(file);
     menu_bar->addMenu(&edit_menu_);
   }
@@ -95,13 +102,24 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   splitter_.setOrientation(Qt::Horizontal);
   setCentralWidget(&splitter_);
 
-  script_list_.setModel(&archive_);
+  QMenu *pinned_menu = new QMenu(this);
+  pinned_menu->addAction(tr("Unpin"), this, SLOT(onUnpinScript()));
+  pinned_list_.setContextMenu(pinned_menu);
 
-  left_side_.setLayout(new QVBoxLayout(&left_side_));
-  left_side_.layout()->addWidget(&script_list_);
-  left_side_.layout()->addWidget(&script_name_editor_);
-  left_side_.setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(&left_side_, SIGNAL(customContextMenuRequested(QPoint)), SLOT(onShowContextMenu(QPoint)));
+  pinned_model_.setSourceModel(&archive_);
+  pinned_list_.setModel(&pinned_model_);
+
+  script_list_.setModel(&archive_);
+  script_list_.setContextMenu(&edit_menu_);
+
+  QBoxLayout *left_vbox = new QVBoxLayout(&left_side_);
+  left_side_.setLayout(left_vbox);
+  left_vbox->addWidget(&pinned_list_);
+  left_vbox->addWidget(&script_list_);
+  left_vbox->addWidget(&script_name_editor_);
+  left_vbox->setStretchFactor(&pinned_list_, 30);
+  left_vbox->setStretchFactor(&script_list_, 70);
+  pinned_list_.setVisible(false);
 
   editor_stack.addWidget(&dummy_editor);
 
@@ -121,8 +139,13 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   setupEditor(dummy_editor);
   connect(&dummy_editor, SIGNAL(archiveDropped(QString)), SLOT(onArchiveDropped(QString)));
 
+  connect(pinned_list_.selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SLOT(onPinnedIndexChange(QModelIndex,QModelIndex)));
+
   connect(script_list_.selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)), SLOT(onScriptIndexChange(QModelIndex,QModelIndex)));
   connect(&script_name_editor_, SIGNAL(textEdited(QString)), SLOT(onScriptNameEdited(QString)));
+
+  connect(&pinned_list_, SIGNAL(doubleClicked(QModelIndex)), SLOT(onUnpinScript()));
+  connect(&script_list_, SIGNAL(doubleClicked(QModelIndex)), SLOT(onPinScript()));
 
   connect(&archive_, SIGNAL(scriptCountChanged(int)), SLOT(onScriptCountChanged(int)));
 
@@ -266,11 +289,6 @@ void RGSS_MainWindow::onArchiveDropped(const QString &filename)
   updateWindowTitle();
 }
 
-void RGSS_MainWindow::onShowContextMenu(const QPoint &p)
-{
-  edit_menu_.exec(left_side_.mapToGlobal(p));
-}
-
 void RGSS_MainWindow::onInsertScript()
 {
   int row = getCurrentIndex().row();
@@ -288,9 +306,11 @@ void RGSS_MainWindow::onDeleteScript()
   if (!current_index.isValid())
     return;
 
+  pinned_list_.setCurrentIndex(QModelIndex());
+
   int row = current_index.row();
 
-  Script *script = archive_.indexToScript(getCurrentIndex());
+  Script *script = archive_.indexToScript(current_index);
   EditorWidget *editor = editor_hash.value(script);
   editor_hash.remove(script);
   recycled_editors.append(editor);
@@ -298,6 +318,35 @@ void RGSS_MainWindow::onDeleteScript()
   archive_.removeRow(row);
 
   setDataModified(true);
+}
+
+void RGSS_MainWindow::onPinScript()
+{
+  QModelIndex current_index = getCurrentIndex();
+
+  if (!current_index.isValid())
+    return;
+
+  Script *script = archive_.indexToScript(current_index);
+  pinned_model_.addScript(*script);
+  pinned_model_.invalidate();
+
+  pinned_list_.setVisible(true);
+  pinned_list_.setCurrentIndex(pinned_model_.mapFromSource(current_index));
+}
+
+void RGSS_MainWindow::onUnpinScript()
+{
+  QModelIndex pinned_index = pinned_list_.selectionModel()->currentIndex();
+
+  if (!pinned_index.isValid())
+    return;
+
+  Script *script = archive_.indexToScript(pinned_model_.mapToSource(pinned_index));
+  pinned_model_.removeScript(*script);
+
+  pinned_model_.invalidate();
+  pinned_list_.setVisible(!pinned_model_.isEmpty());
 }
 
 void RGSS_MainWindow::enableEditing(bool v) {
@@ -336,6 +385,7 @@ void RGSS_MainWindow::setupLoadedArchive()
 void RGSS_MainWindow::onScriptCountChanged(int newCount)
 {
   delete_action_->setEnabled(newCount > 0);
+  pin_action_->setEnabled(newCount > 0);
 }
 
 void RGSS_MainWindow::closeEvent(QCloseEvent *ce)
@@ -517,6 +567,8 @@ void RGSS_MainWindow::closeScriptArchive() {
   archive_opened = false;
 
   setDataModified(false);
+
+  pinned_list_.setVisible(false);
 }
 
 void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
@@ -533,6 +585,16 @@ void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
 
   editor_stack.setCurrentWidget(getEditorForScript(script));
   script_name_editor_.setText(script->name);
+
+  pinned_list_.setCurrentIndex(pinned_model_.mapFromSource(current));
+}
+
+void RGSS_MainWindow::onPinnedIndexChange(QModelIndex current, QModelIndex)
+{
+  if (!current.isValid())
+    return;
+
+  script_list_.setCurrentIndex(pinned_model_.mapToSource(current));
 }
 
 void RGSS_MainWindow::onScriptNameEdited(QString const& name) {

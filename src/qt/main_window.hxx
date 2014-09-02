@@ -16,6 +16,36 @@
 
 #include "script_archive.hxx"
 #include "editor_widget.hxx"
+#include "pinned_script_list.hxx"
+
+class ListView : public QListView
+{
+  Q_OBJECT
+
+public:
+  ListView(QWidget *parent = 0)
+    : QListView(parent),
+      ctx_menu(0)
+  {
+    connect(this, SIGNAL(customContextMenuRequested(QPoint)), SLOT(onShowContextMenu(QPoint)));
+    setContextMenuPolicy(Qt::CustomContextMenu);
+  }
+
+  void setContextMenu(QMenu *menu)
+  {
+    ctx_menu = menu;
+  }
+
+private:
+  QMenu *ctx_menu;
+
+private slots:
+  void onShowContextMenu(const QPoint &point)
+  {
+    if (ctx_menu)
+      ctx_menu->exec(mapToGlobal(point));
+  }
+};
 
 class RGSS_MainWindow : public QMainWindow {
   Q_OBJECT
@@ -35,13 +65,15 @@ class RGSS_MainWindow : public QMainWindow {
 
  private slots:
   void onScriptIndexChange(QModelIndex current, QModelIndex);
+  void onPinnedIndexChange(QModelIndex current, QModelIndex);
   void onScriptNameEdited(QString const& name);
   void onScriptEditorModified();
   void onArchiveDropped(const QString &);
 
-  void onShowContextMenu(const QPoint &);
   void onInsertScript();
   void onDeleteScript();
+  void onPinScript();
+  void onUnpinScript();
 
   void onScriptCountChanged(int);
 
@@ -86,14 +118,17 @@ class RGSS_MainWindow : public QMainWindow {
 
   ScriptArchive archive_;
   bool data_modified_;
+  PinnedScriptList pinned_model_;
 
   QSplitter splitter_;
   QWidget left_side_;
-  QListView script_list_;
+  ListView pinned_list_;
+  ListView script_list_;
   QLineEdit script_name_editor_;
 
   QMenu edit_menu_;
   QAction *delete_action_;
+  QAction *pin_action_;
 
   QStackedWidget editor_stack;
 
