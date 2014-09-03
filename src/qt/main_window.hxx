@@ -17,6 +17,7 @@
 #include "script_archive.hxx"
 #include "editor_widget.hxx"
 #include "pinned_script_list.hxx"
+#include "search_bar.hxx"
 
 class ListView : public QListView
 {
@@ -70,6 +71,11 @@ class RGSS_MainWindow : public QMainWindow {
   void onScriptEditorModified();
   void onArchiveDropped(const QString &);
 
+  void onShowSearchBar();
+  void onSearchBarHidePressed();
+  void onSearchComitted(const QString &text);
+  void onSearchNext();
+
   void onInsertScript();
   void onDeleteScript();
   void onPinScript();
@@ -89,6 +95,7 @@ class RGSS_MainWindow : public QMainWindow {
   void closeEvent(QCloseEvent *);
 
   EditorWidget *getEditorForScript(Script *script);
+  EditorWidget *getCurrentEditor();
 
   QModelIndex getCurrentIndex();
 
@@ -125,6 +132,8 @@ class RGSS_MainWindow : public QMainWindow {
   ListView pinned_list_;
   ListView script_list_;
   QLineEdit script_name_editor_;
+
+  SearchBar search_bar_;
 
   QMenu edit_menu_;
   QAction *delete_action_;

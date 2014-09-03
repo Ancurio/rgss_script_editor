@@ -95,6 +95,13 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
     connect(pin_action_, SIGNAL(triggered()), SLOT(onPinScript()));
     edit_menu_.addAction(pin_action_);
 
+    edit_menu_.addSeparator();
+
+    QAction *find = new QAction(tr("Find"), menu_bar);
+    find->setShortcut(QKeySequence(QKeySequence::Find));
+    connect(find, SIGNAL(triggered()), SLOT(onShowSearchBar()));
+    edit_menu_.addAction(find);
+
     QMenu *view = new QMenu(this);
     view->setTitle(tr("View"));
     QAction *scriptnum = new QAction(tr("Show script indices"), menu_bar);
@@ -123,7 +130,6 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
   script_list_.setContextMenu(&edit_menu_);
 
   QBoxLayout *left_vbox = new QVBoxLayout(&left_side_);
-  left_side_.setLayout(left_vbox);
   left_vbox->addWidget(&pinned_list_);
   left_vbox->addWidget(&script_list_);
   left_vbox->addWidget(&script_name_editor_);
@@ -133,8 +139,18 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
 
   editor_stack.addWidget(&dummy_editor);
 
+  QWidget *right_side = new QWidget(this);
+  QBoxLayout *right_vbox = new QVBoxLayout(right_side);
+  right_vbox->addWidget(&editor_stack, 100);
+  right_vbox->addWidget(&search_bar_, 1);
+
   splitter_.addWidget(&left_side_);
-  splitter_.addWidget(&editor_stack);
+  splitter_.addWidget(right_side);
+
+  search_bar_.setVisible(false);
+  connect(&search_bar_, SIGNAL(hidePressed()), SLOT(onSearchBarHidePressed()));
+  connect(&search_bar_, SIGNAL(searchComitted(QString)), SLOT(onSearchComitted(QString)));
+  connect(&search_bar_, SIGNAL(searchNext()), SLOT(onSearchNext()));
 
   /* Only the editor widget should expand on resize */
   splitter_.setStretchFactor(0, 0);
@@ -231,6 +247,11 @@ EditorWidget *RGSS_MainWindow::getEditorForScript(Script *script)
   return editor;
 }
 
+EditorWidget *RGSS_MainWindow::getCurrentEditor()
+{
+  return static_cast<EditorWidget*>(editor_stack.currentWidget());
+}
+
 QModelIndex RGSS_MainWindow::getCurrentIndex()
 {
   return script_list_.selectionModel()->currentIndex();
@@ -298,6 +319,42 @@ void RGSS_MainWindow::onArchiveDropped(const QString &filename)
   loadScriptArchive(filename);
 
   updateWindowTitle();
+}
+
+void RGSS_MainWindow::onShowSearchBar()
+{
+  EditorWidget *ed = static_cast<EditorWidget*>(editor_stack.currentWidget());
+
+  QString selected = ed->selectedText();
+
+  if (!selected.isEmpty())
+    search_bar_.setEditText(selected);
+
+  search_bar_.onShow();
+}
+
+void RGSS_MainWindow::onSearchBarHidePressed()
+{
+  search_bar_.hide();
+  editor_stack.currentWidget()->setFocus();
+}
+
+void RGSS_MainWindow::onSearchComitted(const QString &text)
+{
+  EditorWidget *cur = getCurrentEditor();
+
+  int line, pos, noop;
+  cur->getSelection(&line, &pos, &noop, &noop);
+
+  bool found = cur->findFirst(text, false, true, false, true, true, line, pos);
+
+  if (!found)
+    search_bar_.setNotFoundFlag();
+}
+
+void RGSS_MainWindow::onSearchNext()
+{
+  getCurrentEditor()->findNext();
 }
 
 void RGSS_MainWindow::onInsertScript()
