@@ -365,6 +365,7 @@ void RGSS_MainWindow::onInsertScript()
   script_list_.setCurrentIndex(archive_.index(row));
 
   setDataModified(true);
+  pinned_model_.invalidate();
 }
 
 void RGSS_MainWindow::onDeleteScript()
@@ -386,6 +387,7 @@ void RGSS_MainWindow::onDeleteScript()
   archive_.removeRow(row);
 
   setDataModified(true);
+  pinned_model_.invalidate();
 }
 
 void RGSS_MainWindow::onPinScript()
