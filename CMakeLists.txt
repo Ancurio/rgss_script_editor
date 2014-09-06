@@ -31,6 +31,7 @@ set(EDITOR_SRCS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/script_archive.cxx"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/pinned_script_list.cxx"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/search_bar.cxx"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/qt/goto_line_dialog.cxx"
 	)
 set(CLI_SRCS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/ruby_data.cxx"

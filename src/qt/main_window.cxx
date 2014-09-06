@@ -3,6 +3,7 @@
 #include "savediscard_dialog.hxx"
 #include "editor_widget.hxx"
 #include "pinned_script_list.hxx"
+#include "goto_line_dialog.hxx"
 
 #include <QtGui/QAction>
 #include <QtGui/QKeySequence>
@@ -101,6 +102,11 @@ RGSS_MainWindow::RGSS_MainWindow(const QString &path_to_load,
     find->setShortcut(QKeySequence(QKeySequence::Find));
     connect(find, SIGNAL(triggered()), SLOT(onShowSearchBar()));
     edit_menu_.addAction(find);
+
+    QAction *goline = new QAction(tr("Go to line"), menu_bar);
+    goline->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_L));
+    connect(goline, SIGNAL(triggered()), SLOT(onGotoLine()));
+    edit_menu_.addAction(goline);
 
     QMenu *view = new QMenu(this);
     view->setTitle(tr("View"));
@@ -349,12 +355,37 @@ void RGSS_MainWindow::onSearchComitted(const QString &text)
   bool found = cur->findFirst(text, false, true, false, true, true, line, pos);
 
   if (!found)
+  {
     search_bar_.setNotFoundFlag();
+    return;
+  }
+
+  cur->centreLine();
 }
 
 void RGSS_MainWindow::onSearchNext()
 {
-  getCurrentEditor()->findNext();
+  if (getCurrentEditor()->findNext())
+    getCurrentEditor()->centreLine();
+}
+
+void RGSS_MainWindow::onGotoLine()
+{
+  EditorWidget *cur = getCurrentEditor();
+
+  GotoLineDialog dialog(this);
+
+  if (dialog.exec() != QDialog::Accepted)
+    return;
+
+  int line = dialog.getLine()-1;
+
+  if (line < 0 || line > cur->lines())
+    return;
+
+  cur->setCursorPosition(line, 0);
+  cur->centreLine();
+  cur->setFocus();
 }
 
 void RGSS_MainWindow::onInsertScript()

@@ -7,6 +7,8 @@
 #include <QFileInfo>
 #include <QPalette>
 
+#include <Qsci/qscicommandset.h>
+
 EditorWidget::EditorWidget(QWidget *parent)
   : QsciScintilla(parent)
 {
@@ -15,6 +17,14 @@ EditorWidget::EditorWidget(QWidget *parent)
   // Set cursor color to text color
   const QColor &textColor = palette().text().color();
   setCaretForegroundColor(textColor);
+
+  /* Disable default Ctrl+L command so we can use it for "goto line" */
+  standardCommands()->boundTo(Qt::CTRL + Qt::Key_L)->setKey(0);
+}
+
+void EditorWidget::centreLine()
+{
+  standardCommands()->find(QsciCommand::VerticalCentreCaret)->execute();
 }
 
 void EditorWidget::dragEnterEvent(QDragEnterEvent *e)

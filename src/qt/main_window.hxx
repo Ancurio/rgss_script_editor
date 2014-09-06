@@ -76,6 +76,8 @@ class RGSS_MainWindow : public QMainWindow {
   void onSearchComitted(const QString &text);
   void onSearchNext();
 
+  void onGotoLine();
+
   void onInsertScript();
   void onDeleteScript();
   void onPinScript();

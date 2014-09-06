@@ -9,6 +9,8 @@ class EditorWidget : public QsciScintilla
 public:
   EditorWidget(QWidget *parent = 0);
 
+  void centreLine();
+
 signals:
   void archiveDropped(const QString &filename);
 
