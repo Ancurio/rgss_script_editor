@@ -675,6 +675,8 @@ void RGSS_MainWindow::closeScriptArchive() {
 
 void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
 {
+  search_bar_.invalidateSearch();
+
   Script *script = archive_.indexToScript(current);
 
   script_name_editor_.setEnabled(script);

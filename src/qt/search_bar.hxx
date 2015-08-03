@@ -19,6 +19,7 @@ public:
 
 public slots:
   void onShow();
+  void invalidateSearch();
 
 signals:
   void hidePressed();
@@ -27,7 +28,6 @@ signals:
 
 private slots:
   void onEnterPressed();
-  void onTextChanged();
 
 private:
   LineEdit *edit;

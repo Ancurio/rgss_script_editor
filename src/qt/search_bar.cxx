@@ -13,7 +13,7 @@ SearchBar::SearchBar(QWidget *parent)
 
   edit = new LineEdit();
   connect(edit, SIGNAL(returnPressed()), SLOT(onEnterPressed()));
-  connect(edit, SIGNAL(textChanged(QString)), SLOT(onTextChanged()));
+  connect(edit, SIGNAL(textChanged(QString)), SLOT(invalidateSearch()));
 
   QPushButton *hide = new QPushButton(tr("Hide"));
   connect(hide, SIGNAL(clicked()), SIGNAL(hidePressed()));
@@ -66,7 +66,7 @@ void SearchBar::onEnterPressed()
   }
 }
 
-void SearchBar::onTextChanged()
+void SearchBar::invalidateSearch()
 {
   text_changed = true;
   not_found->hide();
