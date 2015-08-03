@@ -679,7 +679,7 @@ void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
 
   Script *script = archive_.indexToScript(current);
 
-  script_name_editor_.setEnabled(script);
+  script_name_editor_.setEnabled(script != 0);
 
   if (!script) {
     script_name_editor_.clear();
@@ -687,9 +687,12 @@ void RGSS_MainWindow::onScriptIndexChange(QModelIndex current, QModelIndex)
     return;
   }
 
-  editor_stack.setCurrentWidget(getEditorForScript(script));
-  script_name_editor_.setText(script->name);
+  EditorWidget *editor = getEditorForScript(script);
 
+  editor_stack.setCurrentWidget(editor);
+  editor->setFocus();
+
+  script_name_editor_.setText(script->name);
   pinned_list_.setCurrentIndex(pinned_model_.mapFromSource(current));
 }
 
