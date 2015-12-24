@@ -7,6 +7,9 @@ extern "C" {
 
 #include <QByteArray>
 
+#define LINEEND_INT "\n"
+#define LINEEND_EXT "\r\n"
+
 
 
 bool parseScript(std::string const&) {
@@ -220,6 +223,9 @@ static Script readScript(QIODevice &dev)
   data = decompressData(data);
   script.data = UTF8ToQString(data);
 
+  /* Convert line endings: Windows -> Unix */
+  script.data.remove(QChar('\r'), Qt::CaseSensitive);
+
   return script;
 }
 
@@ -344,8 +350,22 @@ static void writeScript(QIODevice &dev, const Script &script,
   /* Write name */
   writeRubyString(dev, script.name.toUtf8(), format);
 
+  /* Convert line endings: Unix -> Windows (for compat) */
+  QString sdata;
+  sdata.reserve(script.data.size());
+
+  for (size_t i = 0; i < script.data.size(); ++i) {
+    QChar c = script.data.at(i);
+
+    if (c == QChar('\n')) {
+      sdata.append(QChar('\r'));
+    }
+
+    sdata.append(c);
+  }
+
   /* Write script data */
-  QByteArray data = script.data.toUtf8();
+  QByteArray data = sdata.toUtf8();
   data = compressData(data);
   writeRubyString(dev, data, format);
 }
