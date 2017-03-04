@@ -54,8 +54,11 @@ bool ScriptArchive::insertRows(int row, int count, const QModelIndex &parent)
   if (parent.isValid())
     return false;
 
+  Script sc;
+  sc.magic = generateMagic(scripts);
+
   beginInsertRows(QModelIndex(), row, row);
-  scripts.insert(row, Script());
+  scripts.insert(row, sc);
   endInsertRows();
 
   emitScriptCountChanged();

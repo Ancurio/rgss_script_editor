@@ -6,6 +6,7 @@ extern "C" {
 #include <QtCore/QFileInfo>
 
 #include <QByteArray>
+#include <QSet>
 
 #define LINEEND_INT "\n"
 #define LINEEND_EXT "\r\n"
@@ -407,4 +408,20 @@ void writeScripts(const ScriptList &scripts,
   /* Write scripts */
   for (int i = 0; i < scripts.count(); ++i)
     writeScript(dev, scripts[i], format);
+}
+
+int generateMagic(const ScriptList &scripts)
+{
+  QSet<int> ids;
+  for (size_t i = 0; i < scripts.size(); ++i)
+    ids.insert(scripts[i].magic);
+
+  int result;
+
+  /* Generate a value that's not yet taken */
+  do {
+    result = qrand();
+  } while (ids.contains(result) || result < 0);
+
+  return result;
 }

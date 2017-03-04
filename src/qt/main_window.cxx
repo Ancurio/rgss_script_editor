@@ -554,15 +554,28 @@ void RGSS_MainWindow::onImportScripts()
   }
 
   QTextStream indStream(&indFile);
-  int scIdx = 0;
-
   ScriptList scripts;
 
   while (!indStream.atEnd())
   {
-    QString scName = indStream.readLine();
+    QString line = indStream.readLine();
 
-    QString scFilename = QString("%1").arg(scIdx, 3, 10, QLatin1Char('0'));
+    /* Minimum is 32bit ID (8 chars) + space */
+    if (line.size() < 8 + 1) {
+      QMessageBox::critical(this, "Importing error.", "Index entry too short: " + line);
+      return;
+    }
+
+    bool parseOK;
+    QString scFilename = line.left(8);
+    quint32 scID = scFilename.toUInt(&parseOK, 16);
+
+    if (!parseOK) {
+      QMessageBox::critical(this, "Importing error.", "Bad script ID: " + scFilename);
+      return;
+    }
+
+    QString scName = line.mid(9);
     QFile scFile(src_folder + "/" + scFilename);
 
     if (!scFile.open(QFile::ReadOnly)) {
@@ -575,13 +588,11 @@ void RGSS_MainWindow::onImportScripts()
     scFile.close();
 
     Script script;
-    script.magic = 0;
+    script.magic = scID;
     script.name = scName;
     script.data = scData;
 
     scripts.append(script);
-
-    ++scIdx;
   }
 
   closeScriptArchive();
@@ -618,10 +629,11 @@ void RGSS_MainWindow::onExportScripts()
   for (int i = 0; i < scripts.count(); ++i)
   {
     const Script &sc = scripts[i];
+    const QString scID = QString("%1").arg(sc.magic, 8, 16, QLatin1Char('0')).toUpper();
 
-    indStream << sc.name << "\n";
+    indStream << scID << QChar(' ') << sc.name << "\n";
 
-    QFile scFile(dest_folder + "/" + QString("%1").arg(i, 3, 10, QLatin1Char('0')));
+    QFile scFile(dest_folder + "/" + scID);
     if (!scFile.open(QFile::WriteOnly)) {
 
       break;

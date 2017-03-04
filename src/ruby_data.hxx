@@ -23,4 +23,7 @@ ScriptList readScripts(QIODevice &dev);
 void writeScripts(const ScriptList &scripts,
                   QIODevice &dev, Script::Format format);
 
+/* Generate a unique magic (ID) value */
+int generateMagic(const ScriptList &scripts);
+
 #endif
