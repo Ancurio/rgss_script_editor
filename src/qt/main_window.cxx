@@ -631,7 +631,7 @@ void RGSS_MainWindow::onExportScripts()
     const Script &sc = scripts[i];
     const QString scID = QString("%1").arg(sc.magic, 8, 16, QLatin1Char('0')).toUpper();
 
-    indStream << scID << QChar(' ') << sc.name << "\n";
+    indStream << scID << QChar('~') << sc.name << "\n";
 
     QFile scFile(dest_folder + "/" + scID);
     if (!scFile.open(QFile::WriteOnly)) {
