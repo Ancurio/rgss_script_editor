@@ -2,7 +2,7 @@
 #include "ruby_data.hxx"
 
 #include <QtCore/QFileInfo>
-#include <QtGui/QApplication>
+#include <QtWidgets/QApplication>
 #include <QtCore/QTextCodec>
 #include <QtCore/QTextStream>
 

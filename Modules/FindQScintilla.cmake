@@ -1,22 +1,30 @@
 # QScintilla_FOUND
-# QSCINTILLA_INCLUDE_DIR
+# QSCINTILLA_INCLUDE_DIRS
 # QSCINTILLA_LIBRARY
 
-if(QT4_FOUND)
-  find_path(QSCINTILLA_INCLUDE_INTERNAL Qsci/qsciapi.h)
-  find_library(QSCINTILLA_LIBRARY qscintilla2)
-  if(EXISTS "{QSCINTILLA_INCLUDE_INTERNAL}" AND EXISTS "{QSCINTILLA_LIBRARY}")
+if(Qt5Core_FOUND)
+  find_path(QSCINTILLA_INCLUDE_INTERNAL
+    NAMES Qsci/qsciapis.h
+    PATHS ${Qt5Core_INCLUDE_DIRS})
+
+  find_library(QSCINTILLA_LIBRARY
+    NAMES
+      qscintilla2_qt5
+      qt5scintilla2
+      qscintilla2-qt5)
+
+  if(QSCINTILLA_INCLUDE_INTERNAL AND QSCINTILLA_LIBRARY)
     set(QScintilla_FOUND TRUE)
-    set(SCINTILLA_INCLUDE_DIR "${SCINTILLA_INCLUDE_DIR}/Qsci")
-    set(SCINTILLA_INCLUDE_DIRS
-      "${SCINTILLA_INCLUDE_DIRS}"
-      "${QT_QTGUI_INCLUDE_DIR}"
-      "${QT_QTCORE_INCLUDE_DIR}")
-    message(STATUS "QScintilla found: ${SCINTILLA_LIBRARY}")
+    set(QSCINTILLA_INCLUDE_DIRS "${QSCINTILLA_INCLUDE_INTERNAL}/Qsci")
+    message(STATUS "QScintilla found: ${QSCINTILLA_LIBRARY}")
   else()
     set(QScintilla_FOUND FALSE)
   endif()
 else()
-  message(STATUS "Qt4 not found. Find it before this script")
+  message(STATUS "Qt5Core not found. Find it before this script")
   set(QScintilla_FOUND FALSE)
+endif()
+
+if(NOT QScintilla_FOUND AND QScintilla_FIND_REQUIRED)
+  message(FATAL_ERROR "Cannot find QScintilla library")
 endif()

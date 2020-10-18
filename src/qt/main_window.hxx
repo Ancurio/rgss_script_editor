@@ -1,14 +1,14 @@
 #ifndef RGSS_MAIN_WINDOW_HXX
 #define RGSS_MAIN_WINDOW_HXX
 
-#include <QtGui/QMainWindow>
-#include <QtGui/QSplitter>
-#include <QtGui/QListView>
-#include <QtGui/QWidget>
-#include <QtGui/QLineEdit>
-#include <QtGui/QStackedWidget>
-#include <QtGui/QMenu>
-#include <QtGui/QAction>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QSplitter>
+#include <QtWidgets/QListView>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QStackedWidget>
+#include <QtWidgets/QMenu>
+#include <QtWidgets/QAction>
 #include <QtCore/QHash>
 #include <QtCore/QFileInfo>
 

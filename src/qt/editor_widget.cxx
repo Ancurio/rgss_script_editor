@@ -7,6 +7,8 @@
 #include <QFileInfo>
 #include <QPalette>
 
+#include <QMimeData>
+
 #include <Qsci/qscicommandset.h>
 
 EditorWidget::EditorWidget(QWidget *parent)

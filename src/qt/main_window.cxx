@@ -5,15 +5,15 @@
 #include "pinned_script_list.hxx"
 #include "goto_line_dialog.hxx"
 
-#include <QtGui/QAction>
-#include <QtGui/QKeySequence>
-#include <QtGui/QMainWindow>
-#include <QtGui/QMenuBar>
-#include <QtGui/QMessageBox>
-#include <QtGui/QVBoxLayout>
-#include <QtGui/QFileDialog>
+#include <QtWidgets/QAction>
+#include <QtWidgets/QMainWindow>
+#include <QtWidgets/QMenuBar>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QApplication>
 #include <QtGui/QCloseEvent>
-#include <QtGui/QApplication>
+#include <QtGui/QKeySequence>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTextStream>
 #include <QtCore/QSettings>

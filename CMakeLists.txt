@@ -6,10 +6,7 @@ set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/lib")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Modules")
 
-find_package(Qt4 REQUIRED QtCore QtGui)
-include(${QT_USE_FILE})
-add_definitions(${QT_DEFINITIONS})
-
+find_package(Qt5 REQUIRED Core Widgets Gui)
 find_package(QScintilla REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -19,7 +16,7 @@ include_directories(
   ${QSCINTILLA_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
 
 file(GLOB QT_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/qt/*.hxx")
-qt4_wrap_cpp(QT_MOC_OUTPUT ${QT_HEADERS})
+qt5_wrap_cpp(QT_MOC_OUTPUT ${QT_HEADERS})
 
 set(EDITOR_SRCS
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/main.cxx"
@@ -44,8 +41,8 @@ add_executable("${PROJECT_NAME}" ${EDITOR_SRCS})
 add_executable("${PROJECT_NAME}_cli" ${CLI_SRCS})
 
 target_link_libraries("${PROJECT_NAME}"
-  ${QT_LIBRARIES}
+  Qt5::Widgets
   ${QSCINTILLA_LIBRARY} ${ZLIB_LIBRARIES})
 target_link_libraries("${PROJECT_NAME}_cli"
-  ${QT_LIBRARIES}
+  Qt5::Widgets
   ${QSCINTILLA_LIBRARY} ${ZLIB_LIBRARIES})
