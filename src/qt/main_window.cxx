@@ -214,7 +214,7 @@ void RGSS_MainWindow::setupEditor(QsciScintilla &editor)
 
   // line number
   QFontMetrics fontmetrics(font);
-  editor.setMarginWidth(0, fontmetrics.width("00000") + 6);
+  editor.setMarginWidth(0, fontmetrics.horizontalAdvance("00000") + 6);
   editor.setMarginLineNumbers(0, true);
 
   // auto complete
